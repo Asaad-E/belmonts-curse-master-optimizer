@@ -21,12 +21,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
             {
                 try
                 {
-                    if (MapPatches.IsGameMenuOpen) return true;
-                    if ((UnityEngine.Object)(object)_instance != (UnityEngine.Object)null &&
-                        (UnityEngine.Object)(object)_instance.menu != (UnityEngine.Object)null)
-                    {
-                        return ((Component)_instance.menu).gameObject.activeInHierarchy;
-                    }
+                    return MapPatches.IsGameMenuOpen;
                 }
                 catch {}
                 return false;

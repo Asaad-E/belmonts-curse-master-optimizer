@@ -75,6 +75,7 @@ namespace BelmontsCurseMasterOptimizer.UI
                     v = Math.Clamp(v, 0, 6);
                     if (Plugin.RenderScaleConfig != null) Plugin.RenderScaleConfig.Value = v;
                     Plugin.Instance?.Config.Save();
+                    Plugin.L.LogInfo($"[RenderScale] Setting updated: {100 - (v * 5)}% (scale: {1.0f - (v * 0.05f):F2})");
                 }
             },
             new VideoOption
@@ -182,15 +183,22 @@ namespace BelmontsCurseMasterOptimizer.UI
                 // While viewing the map: NEVER switch renderScale to 1.0f (which causes GPU buffer recreation!)
                 if (MapPatches.IsMapOpen) return false;
 
-                // Lock to 100% native resolution when actively inside the pause menu / settings canvas,
-                // so all menu text and options are 100% pixel-perfect and razor-sharp!
-                if (MenuCamFix.IsMenuShowing) return true;
-
                 string sceneName = SceneManager.GetActiveScene().name;
                 if (!string.IsNullOrEmpty(sceneName) && (sceneName.Contains("Title") || sceneName.Contains("Init")))
                 {
                     return true;
                 }
+
+                // In active gameplay: Time is running (timeScale > 0) -> ALWAYS return false!
+                // This guarantees 3D resolution scaling is NEVER blocked or locked during gameplay!
+                if (Time.timeScale > 0f)
+                {
+                    return false;
+                }
+
+                // Lock to 100% native resolution when actively inside the pause menu / settings canvas,
+                // so all menu text and options are 100% pixel-perfect and razor-sharp!
+                if (MapPatches.IsGameMenuOpen) return true;
             }
             catch {}
             return false;
@@ -220,6 +228,7 @@ namespace BelmontsCurseMasterOptimizer.UI
 
                         if (Mathf.Abs(urp.renderScale - targetScale) > 0.001f)
                         {
+                            Plugin.L.LogInfo($"[RenderScale] Applying renderScale: {targetScale:F2} (IsInMenu: {IsInMenu()}, timeScale: {Time.timeScale:F2})");
                             urp.renderScale = targetScale;
                         }
 

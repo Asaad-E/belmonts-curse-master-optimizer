@@ -141,6 +141,14 @@ namespace BelmontsCurseMasterOptimizer.Patches
             _activeGameMenuManager = null;
         }
 
+        [HarmonyPatch(typeof(GameMenuManager), "OnDestroy")]
+        [HarmonyPostfix]
+        public static void AfterGameMenuDestroy()
+        {
+            IsMapOpen = false;
+            _activeGameMenuManager = null;
+        }
+
         [HarmonyPatch(typeof(UIMapLevelTransition), "PlayTransition")]
         [HarmonyPrefix]
         public static void BeforePlayTransition(UIMapLevelTransition __instance)
