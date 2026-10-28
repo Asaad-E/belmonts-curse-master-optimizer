@@ -46,7 +46,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
 
             try
             {
-                float camDistZ = Mathf.Abs(cam.transform.position.z);
+                float camDistZ = Mathf.Max(1.0f, Mathf.Abs(cam.transform.position.z));
                 float visibleHeight;
                 if (cam.orthographic)
                 {
@@ -54,9 +54,9 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 }
                 else
                 {
-                    // In Belmont's Curse (perspective 2.5D), RedWineCameraZoom pulls camera along -Z based on targetHeight (baseline 13.0f):
-                    // visibleHeight = 2 * |Z| * tan(FOV * 0.5 * Deg2Rad)
-                    visibleHeight = 2.0f * camDistZ * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
+                    // Clamp FOV to safe trigonometric range [1.0f, 160.0f] to guard against Cinemachine blend singularities
+                    float safeFov = Mathf.Clamp(cam.fieldOfView, 1.0f, 160.0f);
+                    visibleHeight = 2.0f * camDistZ * Mathf.Tan(safeFov * 0.5f * Mathf.Deg2Rad);
                 }
 
                 const float baselineHeight = 13.0f;
