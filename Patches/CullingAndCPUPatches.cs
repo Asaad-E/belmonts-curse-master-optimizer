@@ -30,8 +30,9 @@ namespace BelmontsCurseMasterOptimizer.Patches
                     if ((UnityEngine.Object)(object)anim == (UnityEngine.Object)null) continue;
                     if (anim.cullingMode != AnimatorCullingMode.AlwaysAnimate) continue;
 
-                    // Whitelist player and bosses
-                    if (IsPlayerOrBoss(anim)) continue;
+                    // STRICT RULE: Never cull bones on combat actors (enemies, bosses, players)
+                    // Only cull non-combat environment scenery props (chains, banners, torches, chandeliers)
+                    if (IsCombatActor(anim)) continue;
 
                     anim.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
                     culled++;
@@ -39,7 +40,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
 
                 if (culled > 0)
                 {
-                    Plugin.L.LogDebug($"[Culling] Set CullUpdateTransforms on {culled} off-screen animators.");
+                    Plugin.L.LogDebug($"[Culling] Set CullUpdateTransforms on {culled} off-screen environment props.");
                 }
             }
             catch (Exception ex)
@@ -48,20 +49,31 @@ namespace BelmontsCurseMasterOptimizer.Patches
             }
         }
 
-        private static bool IsPlayerOrBoss(Animator anim)
+        private static bool IsCombatActor(Animator anim)
         {
             try
             {
                 Transform curr = anim.transform;
                 while ((UnityEngine.Object)(object)curr != (UnityEngine.Object)null)
                 {
-                    string name = ((UnityEngine.Object)curr.gameObject).name;
+                    GameObject go = curr.gameObject;
+                    string name = ((UnityEngine.Object)go).name;
+
                     if (name.IndexOf("Player", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        name.IndexOf("Boss", StringComparison.OrdinalIgnoreCase) >= 0)
+                        name.IndexOf("Boss", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        name.IndexOf("Enemy", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        name.IndexOf("Mob", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        name.IndexOf("Monster", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        name.IndexOf("Creature", StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         return true;
                     }
-                    if (curr.GetComponent<BossComponent>() != null)
+
+                    // Check for combat hurtbox, damage caster, character controller, or boss components
+                    if (go.GetComponent<ColliderHurtboxHolder>() != null ||
+                        go.GetComponent<DamageCaster>() != null ||
+                        go.GetComponent<CharacterController>() != null ||
+                        go.GetComponent<BossComponent>() != null)
                     {
                         return true;
                     }

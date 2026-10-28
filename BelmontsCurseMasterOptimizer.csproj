@@ -49,6 +49,10 @@
       <HintPath>..\..\BepInEx\interop\UnityEngine.CoreModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>..\..\BepInEx\interop\UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="UnityEngine.UI">
       <HintPath>..\..\BepInEx\interop\UnityEngine.UI.dll</HintPath>
       <Private>False</Private>
