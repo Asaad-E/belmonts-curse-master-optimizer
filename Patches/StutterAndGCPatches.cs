@@ -55,15 +55,17 @@ namespace BelmontsCurseMasterOptimizer.Patches
             catch {}
         }
 
-        // Active per-frame incremental GC heartbeat called from VideoOptionsDriver.Update()
+        // Active paced incremental GC heartbeat called from VideoOptionsDriver.Update()
         public static void IncrementalHeartbeat()
         {
-            if (!StutterFixEnabled) return;
-            if (GarbageCollector.GCMode != GarbageCollector.Mode.Enabled) return;
+            if (!StutterFixEnabled || MapPatches.IsMapOpen) return;
+            if (GarbageCollector.GCMode != GarbageCollector.Mode.Enabled || !GarbageCollector.isIncremental) return;
 
-            // Grant an active 1.0 ms slice per frame during normal gameplay
-            // Prevents Gen0/1 memory from out-allocating the collector during intense combat
-            GarbageCollector.CollectIncremental(1000000uL);
+            // Run a 1.0 ms incremental slice every 2nd frame during active gameplay
+            if (Time.frameCount % 2 == 0)
+            {
+                GarbageCollector.CollectIncremental(1000000uL);
+            }
         }
 
         [HarmonyPatch(typeof(RoomManagerSystem), "RoomChangeTask")]
@@ -87,7 +89,16 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 var gsm = GameStateManager.GetInstance();
                 if ((UnityEngine.Object)(object)gsm != (UnityEngine.Object)null)
                 {
-                    return gsm.IsLoadingState();
+                    if (gsm.IsLoadingState())
+                    {
+                        return true;
+                    }
+                    // Also allow full cleanup during death/checkpoint fade-to-black recovery state
+                    if ((UnityEngine.Object)(object)gsm.activeState != (UnityEngine.Object)null &&
+                        (UnityEngine.Object)(object)gsm.activeState == (UnityEngine.Object)(object)gsm.recoveryState)
+                    {
+                        return true;
+                    }
                 }
             }
             catch {}
@@ -102,9 +113,11 @@ namespace BelmontsCurseMasterOptimizer.Patches
 
             try
             {
-                // Safety valve: allow full blocking GC during actual loading screens or room changes
-                if (IsInTrueLoadingScreen() || _inRoomChange)
+                // CRITICAL RED-TEAM AUDIT FIX: Only allow full blocking GC during actual loading screens or death recovery!
+                // Do NOT allow full GC when _inRoomChange is true, because <RoomChangeTask>b__37_15 calls GC.Collect() mid-doorway!
+                if (IsInTrueLoadingScreen())
                 {
+                    _lastMemoryAtGC = Profiler.GetTotalAllocatedMemoryLong();
                     return true;
                 }
 
@@ -124,9 +137,12 @@ namespace BelmontsCurseMasterOptimizer.Patches
                     return true;
                 }
 
-                // Gameplay collection: convert to 3 ms incremental slice
-                GarbageCollector.CollectIncremental(IncrementalKickNs);
-                return false; // Skip blocking collection
+                // Doorway and gameplay collection: convert to incremental slice
+                if (GarbageCollector.isIncremental)
+                {
+                    GarbageCollector.CollectIncremental(IncrementalKickNs);
+                }
+                return false; // Skip blocking collection!
             }
             catch (System.Exception ex)
             {
@@ -143,12 +159,16 @@ namespace BelmontsCurseMasterOptimizer.Patches
 
             try
             {
-                if (IsInTrueLoadingScreen() || _inRoomChange)
+                if (IsInTrueLoadingScreen())
                 {
+                    _lastMemoryAtGC = Profiler.GetTotalAllocatedMemoryLong();
                     return true;
                 }
 
-                GarbageCollector.CollectIncremental(IncrementalKickNs);
+                if (GarbageCollector.isIncremental)
+                {
+                    GarbageCollector.CollectIncremental(IncrementalKickNs);
+                }
                 return false;
             }
             catch
@@ -162,7 +182,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
         public static bool BeforeUnload(ref AsyncOperation __result, out bool __state)
         {
             __state = false;
-            if (!StutterFixEnabled || !_inRoomChange)
+            if (!StutterFixEnabled)
             {
                 return true;
             }
@@ -171,6 +191,24 @@ namespace BelmontsCurseMasterOptimizer.Patches
             if (_memoryAtUnload < 0)
             {
                 _memoryAtUnload = totalMem;
+            }
+
+            // Ratchet watermark downward when memory drops after biome unloads
+            if (totalMem < _memoryAtUnload)
+            {
+                _memoryAtUnload = totalMem;
+            }
+
+            // Always allow unload during true loading screens or death recovery
+            if (IsInTrueLoadingScreen())
+            {
+                _memoryAtUnload = totalMem;
+                return true;
+            }
+
+            if (!_inRoomChange)
+            {
+                return true;
             }
 
             long growthMB = (totalMem - _memoryAtUnload) >> 20;
