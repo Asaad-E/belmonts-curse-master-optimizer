@@ -139,6 +139,20 @@ namespace BelmontsCurseMasterOptimizer.Patches
             _activeGameMenuManager = null;
         }
 
+        [HarmonyPatch(typeof(UIMapLevelTransition), "PlayTransition")]
+        [HarmonyPrefix]
+        public static void BeforePlayTransition(UIMapLevelTransition __instance)
+        {
+            if (!FastMapEnabled || (UnityEngine.Object)(object)__instance == (UnityEngine.Object)null) return;
+            try
+            {
+                // Snappy 0.20s transition: eliminates the 1.5 - 2.0s sluggish dual-camera rendering overlap!
+                __instance.transitionInDuration = 0.20f;
+                __instance.transitionOutDuration = 0.15f;
+            }
+            catch {}
+        }
+
         [HarmonyPatch(typeof(UIMapWorldManager), "OpenWorldMap", new Type[0])]
         [HarmonyPostfix]
         public static void AfterOpenWorldMap(UIMapWorldManager __instance)
