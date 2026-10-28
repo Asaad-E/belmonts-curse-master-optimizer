@@ -19,6 +19,22 @@ namespace BelmontsCurseMasterOptimizer.Patches
         private static UIMapLevelManager _activeLevelManager = null;
         private static GameMenuManager _activeGameMenuManager = null;
 
+        public static bool IsGameMenuOpen
+        {
+            get
+            {
+                try
+                {
+                    if ((UnityEngine.Object)(object)_activeGameMenuManager != (UnityEngine.Object)null)
+                    {
+                        return _activeGameMenuManager.IsShowing();
+                    }
+                }
+                catch {}
+                return false;
+            }
+        }
+
         // Failsafe watchdog: Ensures Camera.main is NEVER left at cullingMask == 0
         public static void FailsafeCameraWatchdog()
         {

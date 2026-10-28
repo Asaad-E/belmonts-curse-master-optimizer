@@ -12,6 +12,7 @@ using UnityEngine.Localization.Settings;
 using UnityEngine.Localization.Tables;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.SceneManagement;
 using BelmontsCurseMasterOptimizer.Patches;
 
 namespace BelmontsCurseMasterOptimizer.UI
@@ -57,7 +58,7 @@ namespace BelmontsCurseMasterOptimizer.UI
                 Path = "video/renderscale",
                 Key = "DeckFix_RenderScale",
                 Title = "3D Resolution Scale",
-                Choices = new (string, string, int)[11]
+                Choices = new (string, string, int)[7]
                 {
                     ("DeckFix_Scale_100", "100% (Native)", 0),
                     ("DeckFix_Scale_95", "95%", 1),
@@ -65,16 +66,12 @@ namespace BelmontsCurseMasterOptimizer.UI
                     ("DeckFix_Scale_85", "85%", 3),
                     ("DeckFix_Scale_80", "80%", 4),
                     ("DeckFix_Scale_75", "75%", 5),
-                    ("DeckFix_Scale_70", "70%", 6),
-                    ("DeckFix_Scale_65", "65%", 7),
-                    ("DeckFix_Scale_60", "60%", 8),
-                    ("DeckFix_Scale_55", "55%", 9),
-                    ("DeckFix_Scale_50", "50%", 10)
+                    ("DeckFix_Scale_70", "70%", 6)
                 },
-                Default = () => (Plugin.RenderScaleConfig != null) ? Math.Clamp(Plugin.RenderScaleConfig.Value, 0, 10) : 0,
+                Default = () => (Plugin.RenderScaleConfig != null) ? Math.Clamp(Plugin.RenderScaleConfig.Value, 0, 6) : 0,
                 Apply = (int v) =>
                 {
-                    v = Math.Clamp(v, 0, 10);
+                    v = Math.Clamp(v, 0, 6);
                     if (Plugin.RenderScaleConfig != null) Plugin.RenderScaleConfig.Value = v;
                     Plugin.Instance?.Config.Save();
                     ApplyCurrentRenderScale();
@@ -178,11 +175,29 @@ namespace BelmontsCurseMasterOptimizer.UI
         internal static int ReapplyFrames = -1;
         internal static VideoSettings Video;
 
+        public static bool IsInMenu()
+        {
+            try
+            {
+                if (VideoOptionPatches.IsSettingsOpen) return true;
+                if (MapPatches.IsGameMenuOpen) return true;
+                if (Time.timeScale == 0f) return true;
+
+                string sceneName = SceneManager.GetActiveScene().name;
+                if (!string.IsNullOrEmpty(sceneName) && (sceneName.Contains("Title") || sceneName.Contains("Menu") || sceneName.Contains("Init")))
+                {
+                    return true;
+                }
+            }
+            catch {}
+            return false;
+        }
+
         public static float GetTargetRenderScale()
         {
             int index = (Plugin.RenderScaleConfig != null) ? Plugin.RenderScaleConfig.Value : 0;
             float scale = 1.0f - (index * 0.05f);
-            return Mathf.Clamp(scale, 0.50f, 1.0f);
+            return Mathf.Clamp(scale, 0.70f, 1.0f);
         }
 
         public static void ApplyCurrentRenderScale()
@@ -195,7 +210,11 @@ namespace BelmontsCurseMasterOptimizer.UI
                     var urp = pipe.TryCast<UniversalRenderPipelineAsset>();
                     if (urp != null)
                     {
-                        float targetScale = GetTargetRenderScale();
+                        // In menus (pause menu, settings, title screen), ALWAYS lock to 100% native (1.0f)
+                        // so that all menu text, descriptions, and fonts are 100% pixel-perfect and crystal clear!
+                        // The user-configured resolution scale is applied exclusively during active gameplay.
+                        float targetScale = IsInMenu() ? 1.0f : GetTargetRenderScale();
+
                         if (Mathf.Abs(urp.renderScale - targetScale) > 0.001f)
                         {
                             urp.renderScale = targetScale;

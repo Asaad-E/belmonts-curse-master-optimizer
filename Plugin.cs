@@ -43,7 +43,7 @@ namespace BelmontsCurseMasterOptimizer
                 "Graphics",
                 "RenderScale",
                 0,
-                new ConfigDescription("3D Resolution Scale: 0 = 100% (Native), 1 = 95%, 2 = 90%, 3 = 85%, 4 = 80%, 5 = 75%, 6 = 70%, 7 = 65%, 8 = 60%, 9 = 55%, 10 = 50%", new AcceptableValueRange<int>(0, 10))
+                new ConfigDescription("3D Resolution Scale: 0 = 100% (Native), 1 = 95%, 2 = 90%, 3 = 85%, 4 = 80%, 5 = 75%, 6 = 70%", new AcceptableValueRange<int>(0, 6))
             );
 
             ReflectionModeConfig = Config.Bind<int>(

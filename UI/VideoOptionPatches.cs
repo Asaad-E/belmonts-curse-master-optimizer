@@ -10,6 +10,7 @@ namespace BelmontsCurseMasterOptimizer.UI
     [HarmonyPatch]
     public static class VideoOptionPatches
     {
+        public static bool IsSettingsOpen { get; private set; } = false;
         private static readonly HashSet<int> started = new HashSet<int>();
 
         [HarmonyPatch(typeof(SettingsViewBase), "Start")]
@@ -48,6 +49,7 @@ namespace BelmontsCurseMasterOptimizer.UI
         [HarmonyPostfix]
         private static void AfterViewEnable(SettingsViewBase __instance)
         {
+            IsSettingsOpen = true;
             if ((UnityEngine.Object)(object)__instance == (UnityEngine.Object)null || !started.Contains(((UnityEngine.Object)__instance).GetInstanceID()))
             {
                 return;
@@ -60,6 +62,13 @@ namespace BelmontsCurseMasterOptimizer.UI
             {
                 Plugin.L.LogError(ex);
             }
+        }
+
+        [HarmonyPatch(typeof(SettingsViewBase), "OnDisable")]
+        [HarmonyPostfix]
+        private static void AfterViewDisable()
+        {
+            IsSettingsOpen = false;
         }
 
         [HarmonyPatch(typeof(VideoSettings), "IsSettingActive")]

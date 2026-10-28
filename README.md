@@ -62,7 +62,7 @@ Once installed, open **Settings > Video** to configure:
 | :--- | :--- | :--- |
 | **Max FPS** | 30 / 40 / 45 / 60 / 120 / Unlimited | Target framerate limit. Includes dedicated 40 FPS and 45 FPS modes for Steam Deck. |
 | **Graphics Quality** | Low / Medium / High | Overall graphics quality and asset fidelity. |
-| **3D Resolution Scale** | 100% to 50% (5% steps) | Independent 3D internal resolution scale with FSR reconstruction. UI and text remain 100% native. |
+| **3D Resolution Scale** | 100% to 70% (5% steps) | Independent 3D scene resolution scale during gameplay. Automatically locked to 100% in all menus for crystal-clear text. |
 | **Water Reflections** | Optimized (60 FPS) / Frame-Skip / Off | Silky smooth 60 FPS reflection, legacy frame-skip, or completely off for battery savings. |
 | **Fast Map Screen** | Enabled / Disabled | Eliminates the 2-second map close freeze and optimizes map rendering cameras. |
 | **Wide View Optimizer** | Enabled / Disabled | Automatically scales shadow distance during wide camera zoom-outs. |
