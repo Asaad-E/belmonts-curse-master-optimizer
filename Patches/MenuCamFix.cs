@@ -33,6 +33,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
                         if (scene.IsValid())
                         {
                             uiCam = val;
+                            origSize = val.orthographicSize;
                         }
                     }
                 }
