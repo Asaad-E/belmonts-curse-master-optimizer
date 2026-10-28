@@ -20,35 +20,35 @@ While *Castlevania: Belmont's Curse* is an incredible retro-modern experience, t
 
 ## Key Features
 
-### 🗺️ Instant, Zero-Lag Map Navigation
+### Instant, Zero-Lag Map Navigation
 - **The Problem:** Opening the map renders the entire 3D world behind it (dropping FPS), and closing the map freezes the game for ~2 seconds while unloading scene data.
 - **The Fix:** Freezes 3D scene rendering behind the map for a fluid 60 FPS map browsing experience, and caches the map in memory so closing it is instantaneous (<1 ms) with zero recovery lag.
 
-### 💧 Smooth 60 FPS Water Reflections
+### Smooth 60 FPS Water Reflections
 - **The Problem:** Frame-skipping water reflections cause distracting jitter and sliding artifacts as the camera moves.
 - **The Fix:** Renders water reflections smoothly every single frame at 60 FPS, while optimizing internal reflection resolution and stripping unnecessary shadow passes to keep GPU and CPU usage minimal.
 
-### 🎥 Wide-Angle & Boss Arena View Optimizer
+### Wide-Angle & Boss Arena View Optimizer
 - **The Problem:** When the camera pulls back to show huge scenic rooms or boss arenas, framerates plunge because the game suddenly tries to render hundreds of distant lights and shadow casters.
 - **The Fix:** Dynamically and smoothly scales shadow distance and limits secondary dynamic lights when the camera zooms out, keeping large encounters smooth and responsive without noticeable visual popping.
 
-### ⚡ Stutter-Free Traversal & Exploration
+### Stutter-Free Traversal & Exploration
 - **The Problem:** Running between rooms and hitting checkpoints triggers harsh garbage collection freezes (40–120 ms pauses).
 - **The Fix:** Converts blocking garbage collections into smooth background incremental slices (3 ms), expands asset upload streaming buffers, and clamps physics catch-up loops to eliminate exploration hitching.
 
-### 🔋 Global CPU Optimization & Battery Savings
+### Global CPU Optimization & Battery Savings
 - **The Problem:** Unseen enemies and animated props running complex skeletal calculations off-screen waste CPU cycles and drain handheld battery.
 - **The Fix:** Intelligently pauses bone transform calculations for off-screen enemies and enables the SRP Batcher engine-wide, significantly reducing CPU draw overhead and extending battery life on the Steam Deck.
 
-### 🔍 Razor-Sharp Text & UI (Zero Blurriness Guarantee)
+### Razor-Sharp Text & UI (Zero Blurriness Guarantee)
 - **The Problem:** Aggressive resolution downscaling can make dialogue text, damage numbers, and menu fonts blurry and soft.
 - **The Fix:** Strictly locks resolution scale to 1.0 (100% native pixel-sharp rendering) on Medium and High quality presets. Dialogue, UI, and TextMeshPro font elements remain crisp and clean at all times.
 
-### 🎮 Native In-Game Settings Menu
+### Native In-Game Settings Menu
 - **The Problem:** Having to edit configuration files or restart the game to tweak settings.
 - **The Fix:** Adds clean, native options directly inside the game's **Settings > Video** menu with full gamepad D-pad and analog stick navigation. Any setting changed in-game is saved automatically.
 
-### 🖥️ 16:10 Aspect Ratio Fix for Steam Deck
+### 16:10 Aspect Ratio Fix for Steam Deck
 - **The Problem:** On 16:10 displays like the Steam Deck, the pause menu camera gets cropped or zoomed in awkwardly.
 - **The Fix:** Automatically scales the pause menu camera to fit 16:10 screens perfectly so no art or text is cut off.
 
