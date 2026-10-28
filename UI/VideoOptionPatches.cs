@@ -10,26 +10,7 @@ namespace BelmontsCurseMasterOptimizer.UI
     [HarmonyPatch]
     public static class VideoOptionPatches
     {
-        private static readonly HashSet<int> _activeSettingsViews = new HashSet<int>();
         private static readonly HashSet<int> started = new HashSet<int>();
-
-        public static bool IsSettingsOpen
-        {
-            get
-            {
-                try
-                {
-                    if (_activeSettingsViews.Count > 0) return true;
-                    if ((UnityEngine.Object)(object)VideoOptions.Video != (UnityEngine.Object)null &&
-                        ((Component)VideoOptions.Video).gameObject.activeInHierarchy)
-                    {
-                        return true;
-                    }
-                }
-                catch {}
-                return false;
-            }
-        }
 
         [HarmonyPatch(typeof(SettingsViewBase), "Start")]
         [HarmonyPrefix]
@@ -67,10 +48,6 @@ namespace BelmontsCurseMasterOptimizer.UI
         [HarmonyPostfix]
         private static void AfterViewEnable(SettingsViewBase __instance)
         {
-            if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
-            {
-                _activeSettingsViews.Add(((UnityEngine.Object)__instance).GetInstanceID());
-            }
             if ((UnityEngine.Object)(object)__instance == (UnityEngine.Object)null || !started.Contains(((UnityEngine.Object)__instance).GetInstanceID()))
             {
                 return;
@@ -87,12 +64,8 @@ namespace BelmontsCurseMasterOptimizer.UI
 
         [HarmonyPatch(typeof(SettingsViewBase), "OnDisable")]
         [HarmonyPostfix]
-        private static void AfterViewDisable(SettingsViewBase __instance)
+        private static void AfterViewDisable()
         {
-            if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
-            {
-                _activeSettingsViews.Remove(((UnityEngine.Object)__instance).GetInstanceID());
-            }
         }
 
         [HarmonyPatch(typeof(VideoSettings), "IsSettingActive")]

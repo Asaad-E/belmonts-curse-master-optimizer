@@ -101,10 +101,7 @@ namespace BelmontsCurseMasterOptimizer
 
             // 2. Attach drivers first so options and camera fixes run reliably
             AddComponent<VideoOptionsDriver>();
-            if (FixMenuZoomConfig.Value)
-            {
-                AddComponent<MenuCamFix>();
-            }
+            AddComponent<MenuCamFix>();
 
             // 3. Apply baseline engine optimizations
             StutterAndGCPatches.ApplyEngineTweaks();

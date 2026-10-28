@@ -67,6 +67,8 @@ namespace BelmontsCurseMasterOptimizer.Patches
             if ((UnityEngine.Object)(object)cam == (UnityEngine.Object)null) return;
             try
             {
+                cam.allowMSAA = false;
+                cam.allowHDR = false;
                 var data = cam.GetComponent<UniversalAdditionalCameraData>();
                 if ((UnityEngine.Object)(object)data != (UnityEngine.Object)null)
                 {

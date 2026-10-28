@@ -75,7 +75,6 @@ namespace BelmontsCurseMasterOptimizer.UI
                     v = Math.Clamp(v, 0, 6);
                     if (Plugin.RenderScaleConfig != null) Plugin.RenderScaleConfig.Value = v;
                     Plugin.Instance?.Config.Save();
-                    ApplyCurrentRenderScale();
                 }
             },
             new VideoOption
@@ -180,13 +179,12 @@ namespace BelmontsCurseMasterOptimizer.UI
         {
             try
             {
-                // If map is open, we are viewing the map, NOT adjusting settings: keep 3D scale steady
+                // While viewing the map: NEVER switch renderScale to 1.0f (which causes GPU buffer recreation!)
                 if (MapPatches.IsMapOpen) return false;
 
-                // Lock to 100% native resolution when actively inside Video Options / Settings screen
-                // or in the game pause menu, so all menu text and options are 100% pixel-perfect and razor-sharp!
-                if (VideoOptionPatches.IsSettingsOpen) return true;
-                if (MapPatches.IsGameMenuOpen) return true;
+                // Lock to 100% native resolution when actively inside the pause menu / settings canvas,
+                // so all menu text and options are 100% pixel-perfect and razor-sharp!
+                if (MenuCamFix.IsMenuShowing) return true;
 
                 string sceneName = SceneManager.GetActiveScene().name;
                 if (!string.IsNullOrEmpty(sceneName) && (sceneName.Contains("Title") || sceneName.Contains("Init")))

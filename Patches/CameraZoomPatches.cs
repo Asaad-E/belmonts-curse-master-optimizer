@@ -31,22 +31,6 @@ namespace BelmontsCurseMasterOptimizer.Patches
 
             float baseShadowDist = _originalShadowDistances[urpPtr];
 
-            // If the Map is open: eliminate cascaded shadow passes on Camera.main to remove dual-camera GPU bottleneck!
-            // The background remains beautifully blurred via DepthOfField, while freeing massive GPU fillrate for the map!
-            if (MapPatches.IsMapOpen)
-            {
-                if (urp.shadowDistance > 0.1f)
-                {
-                    urp.shadowDistance = Mathf.Lerp(urp.shadowDistance, 0f, Time.unscaledDeltaTime * 10.0f);
-                    if (urp.shadowDistance <= 0.1f)
-                    {
-                        urp.shadowDistance = 0f;
-                        _isCurrentlyZoomedOut = true;
-                    }
-                }
-                return;
-            }
-
             Camera cam = Camera.main;
             if ((UnityEngine.Object)(object)cam == (UnityEngine.Object)null || !ZoomOptimizerEnabled)
             {

@@ -9,13 +9,33 @@ namespace BelmontsCurseMasterOptimizer.Patches
 {
     public class MenuCamFix : MonoBehaviour
     {
+        private static MenuCamFix _instance;
         private Camera uiCam;
         private Canvas menu;
         private float origSize = -1f;
         private float refresh;
 
+        public static bool IsMenuShowing
+        {
+            get
+            {
+                try
+                {
+                    if (MapPatches.IsGameMenuOpen) return true;
+                    if ((UnityEngine.Object)(object)_instance != (UnityEngine.Object)null &&
+                        (UnityEngine.Object)(object)_instance.menu != (UnityEngine.Object)null)
+                    {
+                        return ((Component)_instance.menu).gameObject.activeInHierarchy;
+                    }
+                }
+                catch {}
+                return false;
+            }
+        }
+
         public MenuCamFix(IntPtr p) : base(p)
         {
+            _instance = this;
         }
 
         private void LateUpdate()
@@ -49,6 +69,11 @@ namespace BelmontsCurseMasterOptimizer.Patches
                         }
                     }
                 }
+            }
+
+            if (Plugin.FixMenuZoomConfig != null && !Plugin.FixMenuZoomConfig.Value)
+            {
+                return;
             }
 
             if ((UnityEngine.Object)(object)uiCam == (UnityEngine.Object)null || !uiCam.orthographic)
