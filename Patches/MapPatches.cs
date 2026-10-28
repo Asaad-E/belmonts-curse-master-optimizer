@@ -9,8 +9,8 @@ namespace BelmontsCurseMasterOptimizer.Patches
     public static class MapPatches
     {
         public static bool FastMapEnabled = true;
-
         public static bool IsMapOpen { get; private set; } = false;
+
         private static Camera _savedCamera = null;
         private static int _savedWorldCullingMask = -1;
 
@@ -26,8 +26,15 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 Camera cam = Camera.main;
                 if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null)
                 {
+                    // Guard against capturing an invalid or already-zeroed culling mask
+                    int currentMask = cam.cullingMask;
+                    if (currentMask == 0)
+                    {
+                        currentMask = -1 & ~(1 << 5); // Default: Everything except UI layer (5)
+                    }
+
                     _savedCamera = cam;
-                    _savedWorldCullingMask = cam.cullingMask;
+                    _savedWorldCullingMask = currentMask;
                     cam.cullingMask = 0; // Freeze 3D scene rendering behind map UI
                     IsMapOpen = true;
                     Plugin.L.LogDebug($"[Map] World camera cullingMask set to 0 (saved: {_savedWorldCullingMask})");
@@ -48,21 +55,24 @@ namespace BelmontsCurseMasterOptimizer.Patches
 
         public static void RestoreWorldCamera()
         {
-            if (!IsMapOpen) return;
+            if (!IsMapOpen && _savedWorldCullingMask == -1) return;
 
             try
             {
-                if ((UnityEngine.Object)(object)_savedCamera != (UnityEngine.Object)null && _savedWorldCullingMask != -1)
+                int maskToRestore = (_savedWorldCullingMask > 0) ? _savedWorldCullingMask : (-1 & ~(1 << 5));
+
+                if ((UnityEngine.Object)(object)_savedCamera != (UnityEngine.Object)null)
                 {
-                    _savedCamera.cullingMask = _savedWorldCullingMask;
-                    Plugin.L.LogDebug($"[Map] Restored world camera cullingMask to {_savedWorldCullingMask}");
+                    _savedCamera.cullingMask = maskToRestore;
+                    Plugin.L.LogDebug($"[Map] Restored saved camera cullingMask to {maskToRestore}");
                 }
                 else
                 {
                     Camera cam = Camera.main;
-                    if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null && _savedWorldCullingMask != -1)
+                    if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null)
                     {
-                        cam.cullingMask = _savedWorldCullingMask;
+                        cam.cullingMask = maskToRestore;
+                        Plugin.L.LogDebug($"[Map] Restored Camera.main cullingMask to {maskToRestore}");
                     }
                 }
             }
@@ -75,6 +85,20 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 IsMapOpen = false;
                 _savedCamera = null;
                 _savedWorldCullingMask = -1;
+            }
+        }
+
+        // Failsafe watchdog called from VideoOptionsDriver.Update() every frame
+        public static void FailsafeCameraWatchdog()
+        {
+            if (!IsMapOpen)
+            {
+                Camera cam = Camera.main;
+                if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null && cam.cullingMask == 0)
+                {
+                    Plugin.L.LogWarning("[Map] Watchdog detected stranded cullingMask == 0. Recovering world camera!");
+                    cam.cullingMask = -1 & ~(1 << 5);
+                }
             }
         }
 
@@ -160,11 +184,35 @@ namespace BelmontsCurseMasterOptimizer.Patches
             }
         }
 
+        // Purge cached Addressables map instances when changing levels to prevent unbounded memory accumulation
         [HarmonyPatch(typeof(LevelStateLogic), "Unload")]
         [HarmonyPrefix]
         public static void BeforeLevelUnload()
         {
             RestoreWorldCamera();
+            PurgeMapCache();
+        }
+
+        public static void PurgeMapCache()
+        {
+            try
+            {
+                UIMapManager mapMgr = UIMapManager.Get();
+                if ((UnityEngine.Object)(object)mapMgr != (UnityEngine.Object)null &&
+                    (UnityEngine.Object)(object)mapMgr.levelManager != (UnityEngine.Object)null)
+                {
+                    var preloaded = mapMgr.levelManager._preLoadedMaps;
+                    if (preloaded != null)
+                    {
+                        preloaded.Clear();
+                        Plugin.L.LogInfo("[Map] Purged stale _preLoadedMaps on level change to prevent memory leaks.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.L.LogWarning("[Map] PurgeMapCache exception: " + ex.Message);
+            }
         }
     }
 }
