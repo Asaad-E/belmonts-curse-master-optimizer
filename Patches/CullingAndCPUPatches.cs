@@ -102,7 +102,11 @@ namespace BelmontsCurseMasterOptimizer.Patches
                     depth++;
                 }
             }
-            catch {}
+            catch
+            {
+                // Fail-safe: assume combat actor to guarantee bones and hitboxes are never culled
+                return true;
+            }
             return false;
         }
 
