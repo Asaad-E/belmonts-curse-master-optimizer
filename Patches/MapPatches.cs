@@ -132,20 +132,26 @@ namespace BelmontsCurseMasterOptimizer.Patches
         {
             try
             {
-                int maskToRestore = (_hasSavedWorldCullingMask && _savedWorldCullingMask != 0) ? _savedWorldCullingMask : (-1 & ~(1 << 5));
-                Camera cam = ((UnityEngine.Object)(object)_savedCamera != (UnityEngine.Object)null) ? _savedCamera : Camera.main;
+                int maskToRestore = (_hasSavedWorldCullingMask && _savedWorldCullingMask != 0) 
+                    ? _savedWorldCullingMask 
+                    : (-1 & ~(1 << 5));
 
-                if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null)
+                Camera saved = _savedCamera;
+                if ((UnityEngine.Object)(object)saved != (UnityEngine.Object)null)
                 {
-                    cam.cullingMask = maskToRestore;
-                    cam.clearFlags = _savedClearFlags != 0 ? _savedClearFlags : CameraClearFlags.Skybox;
-                    cam.backgroundColor = _savedBgColor;
-                    Plugin.L.LogDebug($"[Map] Restored world camera cullingMask to {maskToRestore}");
+                    saved.cullingMask = maskToRestore;
+                    saved.clearFlags = _savedClearFlags != 0 ? _savedClearFlags : CameraClearFlags.Skybox;
+                    saved.backgroundColor = _savedBgColor;
+                    Plugin.L.LogDebug($"[Map] Restored saved camera cullingMask to {maskToRestore}");
                 }
-                else if ((UnityEngine.Object)(object)Camera.main != (UnityEngine.Object)null && Camera.main.cullingMask == 0)
+
+                // UNCONDITIONAL FAILSAFE: Always inspect active Camera.main independently
+                Camera main = Camera.main;
+                if ((UnityEngine.Object)(object)main != (UnityEngine.Object)null && main.cullingMask == 0)
                 {
-                    Camera.main.cullingMask = -1 & ~(1 << 5);
-                    Camera.main.clearFlags = CameraClearFlags.Skybox;
+                    main.cullingMask = maskToRestore;
+                    main.clearFlags = CameraClearFlags.Skybox;
+                    Plugin.L.LogDebug("[Map] Restored Camera.main cullingMask from stranded 0");
                 }
             }
             catch (Exception ex)
@@ -332,6 +338,10 @@ namespace BelmontsCurseMasterOptimizer.Patches
                             }
                         }
                         preloaded.Clear();
+                        // Reset map pointers and opening type to clean state
+                        lvlMgr._currentMapObject = null;
+                        lvlMgr._currentOpenMapSceneOperationLevel = null;
+                        lvlMgr._currentSceneOpeningType = UIMapLevelManager.LevelMapSceneOpeningType.LoadScene;
                         Plugin.L.LogInfo("[Map] Purged and unloaded stale _preLoadedMaps on level change.");
                     }
                 }
