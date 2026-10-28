@@ -49,6 +49,7 @@ namespace BelmontsCurseMasterOptimizer.UI
                     }
                     EnforceRenderScale(v);
                     if (Plugin.QualityPresetConfig != null) Plugin.QualityPresetConfig.Value = v;
+                    Plugin.Instance?.Config.Save();
                 }
             },
             new VideoOption
@@ -67,6 +68,7 @@ namespace BelmontsCurseMasterOptimizer.UI
                 {
                     WaterReflectionPatches.ReflectionMode = Math.Clamp(v, 0, 2);
                     if (Plugin.ReflectionModeConfig != null) Plugin.ReflectionModeConfig.Value = WaterReflectionPatches.ReflectionMode;
+                    Plugin.Instance?.Config.Save();
                 }
             },
             new VideoOption
@@ -84,6 +86,7 @@ namespace BelmontsCurseMasterOptimizer.UI
                 {
                     MapPatches.FastMapEnabled = (v == 0);
                     if (Plugin.FastMapConfig != null) Plugin.FastMapConfig.Value = MapPatches.FastMapEnabled;
+                    Plugin.Instance?.Config.Save();
                 }
             },
             new VideoOption
@@ -101,6 +104,7 @@ namespace BelmontsCurseMasterOptimizer.UI
                 {
                     CameraZoomPatches.ZoomOptimizerEnabled = (v == 0);
                     if (Plugin.ZoomOptimizerConfig != null) Plugin.ZoomOptimizerConfig.Value = CameraZoomPatches.ZoomOptimizerEnabled;
+                    Plugin.Instance?.Config.Save();
                 }
             },
             new VideoOption
@@ -118,6 +122,7 @@ namespace BelmontsCurseMasterOptimizer.UI
                 {
                     CullingAndCPUPatches.CpuCullingEnabled = (v == 0);
                     if (Plugin.CpuCullingConfig != null) Plugin.CpuCullingConfig.Value = CullingAndCPUPatches.CpuCullingEnabled;
+                    Plugin.Instance?.Config.Save();
                 }
             },
             new VideoOption
@@ -135,6 +140,7 @@ namespace BelmontsCurseMasterOptimizer.UI
                 {
                     StutterAndGCPatches.StutterFixEnabled = (v == 0);
                     if (Plugin.StutterFixConfig != null) Plugin.StutterFixConfig.Value = StutterAndGCPatches.StutterFixEnabled;
+                    Plugin.Instance?.Config.Save();
                 }
             }
         };
@@ -157,6 +163,7 @@ namespace BelmontsCurseMasterOptimizer.UI
                         if (qualityLevel >= 1)
                         {
                             urp.renderScale = 1.0f; // 100% native pixel crispness
+                            urp.upscalingFilter = UpscalingFilterSelection.Auto;
                         }
                         else
                         {
@@ -245,11 +252,24 @@ namespace BelmontsCurseMasterOptimizer.UI
             return All.FirstOrDefault(o => o.Path == path && o.Setting != null);
         }
 
+        private static void OnLocaleChanged(UnityEngine.Localization.Locale newLocale)
+        {
+            AddStrings();
+        }
+
         internal static void Register(VideoSettings vs)
         {
             if (Registered)
             {
                 return;
+            }
+            try
+            {
+                LocalizationSettings.add_SelectedLocaleChanged((Il2CppSystem.Action<UnityEngine.Localization.Locale>)new Action<UnityEngine.Localization.Locale>(OnLocaleChanged));
+            }
+            catch (Exception ex)
+            {
+                Plugin.L.LogWarning("[VideoOptions] Failed to subscribe to SelectedLocaleChanged: " + ex.Message);
             }
             Video = vs;
             AddStrings();

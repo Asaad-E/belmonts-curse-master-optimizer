@@ -15,6 +15,7 @@ namespace BelmontsCurseMasterOptimizer
     {
         public const string Guid = "belmontscurse.masteroptimizer";
 
+        internal static Plugin Instance;
         internal static ManualLogSource L;
 
         internal static ConfigEntry<int> QualityPresetConfig;
@@ -27,6 +28,7 @@ namespace BelmontsCurseMasterOptimizer
 
         public override void Load()
         {
+            Instance = this;
             L = Log;
 
             QualityPresetConfig = Config.Bind<int>(
@@ -122,6 +124,7 @@ namespace BelmontsCurseMasterOptimizer
             SafePatch(typeof(CullingAndCPUPatches), "CullingAndCPUPatches");
             SafePatch(typeof(VideoOptionPatches), "VideoOptionPatches");
 
+            Config.Save();
             L.LogInfo("Belmont's Curse Master Optimizer v1.0.0 successfully loaded!");
         }
     }
