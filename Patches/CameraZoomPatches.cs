@@ -72,7 +72,10 @@ namespace BelmontsCurseMasterOptimizer.Patches
                     float effectiveBase = Mathf.Max(baseShadowDist, minSafePlayPlaneDist);
                     float targetDist = Mathf.Max(minSafePlayPlaneDist, effectiveBase / Mathf.Sqrt(zoomFactor));
 
-                    urp.shadowDistance = Mathf.Lerp(urp.shadowDistance, targetDist, Time.unscaledDeltaTime * 4.0f);
+                    if (Mathf.Abs(urp.shadowDistance - targetDist) > 0.5f)
+                    {
+                        urp.shadowDistance = Mathf.Lerp(urp.shadowDistance, targetDist, Time.unscaledDeltaTime * 4.0f);
+                    }
 
                     // Cap additional dynamic lights to 4 on wide views to avoid draw-call explosion
                     if (zoomFactor > 1.25f && urp.maxAdditionalLightsCount > 4)

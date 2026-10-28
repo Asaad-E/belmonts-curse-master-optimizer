@@ -24,14 +24,14 @@ namespace BelmontsCurseMasterOptimizer.Patches
         {
             try
             {
-                // Re-enforce async upload buffer for streaming textures/meshes without stutter
-                if (QualitySettings.asyncUploadBufferSize != 128)
+                // Tune async upload buffer for streaming textures/meshes without spiking frame time
+                if (QualitySettings.asyncUploadBufferSize != 64)
                 {
-                    QualitySettings.asyncUploadBufferSize = 128;
+                    QualitySettings.asyncUploadBufferSize = 64;
                 }
-                if (QualitySettings.asyncUploadTimeSlice != 4)
+                if (QualitySettings.asyncUploadTimeSlice != 2)
                 {
-                    QualitySettings.asyncUploadTimeSlice = 4;
+                    QualitySettings.asyncUploadTimeSlice = 2;
                 }
 
                 // Prevent physics spiral-of-death catch-up frames
@@ -55,17 +55,10 @@ namespace BelmontsCurseMasterOptimizer.Patches
             catch {}
         }
 
-        // Active paced incremental GC heartbeat called from VideoOptionsDriver.Update()
+        // Active paced incremental GC heartbeat - disabled during active gameplay to eliminate frame-time spikes
         public static void IncrementalHeartbeat()
         {
-            if (!StutterFixEnabled || MapPatches.IsMapOpen) return;
-            if (GarbageCollector.GCMode != GarbageCollector.Mode.Enabled || !GarbageCollector.isIncremental) return;
-
-            // Run a 1.0 ms incremental slice every 2nd frame during active gameplay
-            if (Time.frameCount % 2 == 0)
-            {
-                GarbageCollector.CollectIncremental(1000000uL);
-            }
+            // Disabled during active frame loop: incremental collection is restricted to doorway/room transitions
         }
 
         [HarmonyPatch(typeof(RoomManagerSystem), "RoomChangeTask")]

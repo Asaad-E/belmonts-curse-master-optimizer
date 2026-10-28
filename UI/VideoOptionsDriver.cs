@@ -24,13 +24,10 @@ namespace BelmontsCurseMasterOptimizer.UI
             // 1. Dynamic Zoom Optimization (supports perspective pullback)
             CameraZoomPatches.UpdateZoomOptimization();
 
-            // 2. Map Screen Black-Screen Watchdog
+            // 2. Map Screen Black-Screen & Freeze Watchdog
             MapPatches.FailsafeCameraWatchdog();
 
-            // 3. Active Incremental GC Heartbeat
-            StutterAndGCPatches.IncrementalHeartbeat();
-
-            // 4. Poll asynchronous string table loading after language changes
+            // 3. Poll asynchronous string table loading after language changes
             VideoOptions.PollPendingLocaleStrings(Time.unscaledDeltaTime);
 
             // 5. Zero-Latency RenderScale & UpscalingFilter Lock: Guarantee text sharpness every frame on Med/High
