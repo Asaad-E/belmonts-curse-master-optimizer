@@ -46,6 +46,7 @@ namespace BelmontsCurseMasterOptimizer.UI
                         QualitySettings.SetQualityLevel(v, true);
                         QualitySettings.vSyncCount = vSyncCount;
                         Application.targetFrameRate = targetFrameRate;
+                        CullingAndCPUPatches.EnsureSRPBatcher();
                         ReapplyFrames = 3;
                     }
                     ApplyCurrentRenderScale();
@@ -247,7 +248,10 @@ namespace BelmontsCurseMasterOptimizer.UI
                                 urp.fsrOverrideSharpness = false;
                             }
                         }
-                        urp.useSRPBatcher = true;
+                        if (!urp.useSRPBatcher)
+                        {
+                            urp.useSRPBatcher = true;
+                        }
                     }
                 }
             }

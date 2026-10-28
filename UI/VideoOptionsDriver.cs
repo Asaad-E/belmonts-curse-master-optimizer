@@ -33,13 +33,12 @@ namespace BelmontsCurseMasterOptimizer.UI
             // 5. Zero-Latency RenderScale & UpscalingFilter: Apply user-configured scale (100% to 50% in 5% steps)
             VideoOptions.ApplyCurrentRenderScale();
 
-            // 6. Periodic engine maintenance every 1 second: upload buffer and SRP batcher
+            // 6. Periodic engine maintenance every 1 second: upload buffer and GC pacing
             tweakTimer -= Time.unscaledDeltaTime;
             if (tweakTimer <= 0f)
             {
                 tweakTimer = 1.0f;
                 StutterAndGCPatches.ApplyEngineTweaks();
-                CullingAndCPUPatches.EnsureSRPBatcher();
             }
 
             if (!VideoOptions.Registered)

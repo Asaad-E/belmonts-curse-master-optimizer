@@ -12,7 +12,6 @@ namespace BelmontsCurseMasterOptimizer.Patches
         public static bool ZoomOptimizerEnabled = true;
 
         private static readonly Dictionary<IntPtr, float> _originalShadowDistances = new Dictionary<IntPtr, float>();
-        private static readonly Dictionary<IntPtr, int> _originalAdditionalLights = new Dictionary<IntPtr, int>();
         private static bool _isCurrentlyZoomedOut = false;
 
         public static void UpdateZoomOptimization()
@@ -28,18 +27,16 @@ namespace BelmontsCurseMasterOptimizer.Patches
             if (!_originalShadowDistances.ContainsKey(urpPtr))
             {
                 _originalShadowDistances[urpPtr] = urp.shadowDistance;
-                _originalAdditionalLights[urpPtr] = urp.maxAdditionalLightsCount;
             }
 
             float baseShadowDist = _originalShadowDistances[urpPtr];
-            int baseLights = _originalAdditionalLights[urpPtr];
 
             Camera cam = Camera.main;
             if ((UnityEngine.Object)(object)cam == (UnityEngine.Object)null || !ZoomOptimizerEnabled)
             {
                 if (_isCurrentlyZoomedOut)
                 {
-                    RestoreDefaults(urp, baseShadowDist, baseLights);
+                    RestoreDefaults(urp, baseShadowDist);
                 }
                 return;
             }
@@ -60,9 +57,11 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 }
 
                 const float baselineHeight = 13.0f;
-                const float zoomTriggerHeight = 16.5f; // ~1.27x zoom out
+                // Hysteresis deadband: enter zoom-out state above 17.0f, exit below 15.0f
+                const float zoomTriggerHeight = 17.0f;
+                const float zoomRecoveryHeight = 15.0f;
 
-                if (visibleHeight > zoomTriggerHeight)
+                if (visibleHeight > (_isCurrentlyZoomedOut ? zoomRecoveryHeight : zoomTriggerHeight))
                 {
                     _isCurrentlyZoomedOut = true;
                     float zoomFactor = visibleHeight / baselineHeight;
@@ -77,15 +76,15 @@ namespace BelmontsCurseMasterOptimizer.Patches
                         urp.shadowDistance = Mathf.Lerp(urp.shadowDistance, targetDist, Time.unscaledDeltaTime * 4.0f);
                     }
 
-                    // Cap additional dynamic lights to 4 on wide views to avoid draw-call explosion
-                    if (zoomFactor > 1.25f && urp.maxAdditionalLightsCount > 4)
-                    {
-                        urp.maxAdditionalLightsCount = 4;
-                    }
+                    // CRITICAL LIGHT STABILITY FIX:
+                    // NEVER mutate urp.maxAdditionalLightsCount dynamically at runtime!
+                    // Changing maxAdditionalLightsCount forces URP to reallocate the GPU structured light buffer
+                    // mid-frame, causing dynamic lights (torches, spark lights, ambient hazards) to suddenly pop on/off,
+                    // producing screen-wide lighting flicker and visual glitches.
                 }
                 else if (_isCurrentlyZoomedOut)
                 {
-                    RestoreDefaults(urp, baseShadowDist, baseLights);
+                    RestoreDefaults(urp, baseShadowDist);
                 }
             }
             catch (Exception ex)
@@ -94,7 +93,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
             }
         }
 
-        private static void RestoreDefaults(UniversalRenderPipelineAsset urp, float baseShadowDist, int baseLights)
+        private static void RestoreDefaults(UniversalRenderPipelineAsset urp, float baseShadowDist)
         {
             try
             {
@@ -109,12 +108,8 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 }
                 else
                 {
+                    urp.shadowDistance = baseShadowDist;
                     _isCurrentlyZoomedOut = false;
-                }
-
-                if (urp.maxAdditionalLightsCount != baseLights)
-                {
-                    urp.maxAdditionalLightsCount = baseLights;
                 }
             }
             catch {}
