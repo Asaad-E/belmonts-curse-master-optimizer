@@ -240,11 +240,100 @@ namespace BelmontsCurseMasterOptimizer.UI
                             }
                         }
                     }
+
+                    // Register custom strings for Steam Deck 40 FPS & 45 FPS settings
+                    if (((DetailedLocalizationTable<StringTableEntry>)(object)table).GetEntry("fps_40") == null)
+                    {
+                        ((DetailedLocalizationTable<StringTableEntry>)(object)table).AddEntry("fps_40", "40 FPS");
+                    }
+                    if (((DetailedLocalizationTable<StringTableEntry>)(object)table).GetEntry("fps_45") == null)
+                    {
+                        ((DetailedLocalizationTable<StringTableEntry>)(object)table).AddEntry("fps_45", "45 FPS");
+                    }
                 }
                 catch (System.Exception ex)
                 {
                     Plugin.L.LogWarning($"Option strings for {(current != null ? current.ToString() : null)}: {ex.Message}");
                 }
+            }
+        }
+
+        internal static void InjectSteamDeckFPSOptions(EnumSetting maxFpsSetting)
+        {
+            if (maxFpsSetting == null || maxFpsSetting._options == null) return;
+
+            try
+            {
+                var existing = maxFpsSetting._options;
+                bool has40 = false;
+                bool has45 = false;
+                for (int i = 0; i < existing.Length; i++)
+                {
+                    var opt = ((Il2CppArrayBase<EnumSetting.EnumSettingOption>)(object)existing)[i];
+                    if (opt != null)
+                    {
+                        if (Mathf.Approximately(opt.data, 40f)) has40 = true;
+                        if (Mathf.Approximately(opt.data, 45f)) has45 = true;
+                    }
+                }
+
+                if (has40 && has45) return;
+
+                var list = new System.Collections.Generic.List<EnumSetting.EnumSettingOption>();
+                for (int i = 0; i < existing.Length; i++)
+                {
+                    list.Add(((Il2CppArrayBase<EnumSetting.EnumSettingOption>)(object)existing)[i]);
+                }
+
+                if (!has40)
+                {
+                    var opt40 = new EnumSetting.EnumSettingOption
+                    {
+                        id = "video/maxfps/40",
+                        data = 40.0f,
+                        supported = true,
+                        name = Loc("fps_40")
+                    };
+                    list.Add(opt40);
+                }
+
+                if (!has45)
+                {
+                    var opt45 = new EnumSetting.EnumSettingOption
+                    {
+                        id = "video/maxfps/45",
+                        data = 45.0f,
+                        supported = true,
+                        name = Loc("fps_45")
+                    };
+                    list.Add(opt45);
+                }
+
+                // Sort: 30, 40, 45, 60, 120... (unlimited <= 0 at the end)
+                list.Sort((a, b) =>
+                {
+                    float dataA = a.data <= 0f ? 99999f : a.data;
+                    float dataB = b.data <= 0f ? 99999f : b.data;
+                    return dataA.CompareTo(dataB);
+                });
+
+                for (int i = 0; i < list.Count; i++)
+                {
+                    list[i].value = i;
+                }
+
+                var newArray = new Il2CppReferenceArray<EnumSetting.EnumSettingOption>((long)list.Count);
+                for (int i = 0; i < list.Count; i++)
+                {
+                    ((Il2CppArrayBase<EnumSetting.EnumSettingOption>)(object)newArray)[i] = list[i];
+                }
+
+                maxFpsSetting._options = newArray;
+                Plugin.L.LogInfo("[FPS] Successfully injected 40 FPS and 45 FPS options into Max FPS setting.");
+            }
+            catch (System.Exception ex)
+            {
+                Plugin.L.LogWarning("[FPS] Failed to inject Steam Deck FPS options: " + ex.Message);
             }
         }
 
@@ -291,6 +380,10 @@ namespace BelmontsCurseMasterOptimizer.UI
             }
             Video = vs;
             AddStrings();
+            if (vs._maxFPS != null)
+            {
+                InjectSteamDeckFPSOptions(vs._maxFPS);
+            }
             System.Collections.Generic.List<EnumSetting> list = ((System.Collections.Generic.IEnumerable<EnumSetting>)((CommonSettings)vs)._enumSettings).ToList();
             foreach (VideoOption item in All)
             {

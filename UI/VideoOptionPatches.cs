@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using HarmonyLib;
 using Il2CppInterop.Runtime.InteropTypes;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
+using UnityEngine;
 
 namespace BelmontsCurseMasterOptimizer.UI
 {
@@ -101,6 +103,38 @@ namespace BelmontsCurseMasterOptimizer.UI
             {
                 value = videoOption.Setting;
                 __result = true;
+            }
+        }
+
+        [HarmonyPatch(typeof(VideoSettings), "ApplyFramerateSettings")]
+        [HarmonyPostfix]
+        private static void AfterApplyFramerate(VideoSettings __instance)
+        {
+            try
+            {
+                if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null && __instance._maxFPS != null)
+                {
+                    int currentVal = __instance._maxFPS.value;
+                    var opts = __instance._maxFPS._options;
+                    if (opts != null && currentVal >= 0 && currentVal < opts.Length)
+                    {
+                        var opt = ((Il2CppArrayBase<EnumSetting.EnumSettingOption>)(object)opts)[currentVal];
+                        if (opt != null)
+                        {
+                            float fpsData = opt.data;
+                            if (Mathf.Approximately(fpsData, 40f) || Mathf.Approximately(fpsData, 45f))
+                            {
+                                Application.targetFrameRate = (int)fpsData;
+                                QualitySettings.vSyncCount = 0; // Disable Unity vsync so Gamescope handles 40/45 Hz frame pacing cleanly
+                                Plugin.L.LogInfo($"[FPS] Applied {fpsData} FPS lock with vSyncCount = 0 for Steam Deck pacing.");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.L.LogWarning("[FPS] AfterApplyFramerate: " + ex.Message);
             }
         }
     }
