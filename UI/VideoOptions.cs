@@ -34,7 +34,7 @@ namespace BelmontsCurseMasterOptimizer.UI
                     ("DeckFix_Quality_Medium", "Medium", 1),
                     ("DeckFix_Quality_High", "High", 2)
                 },
-                Default = () => 2,
+                Default = () => (Plugin.QualityPresetConfig != null) ? Math.Clamp(Plugin.QualityPresetConfig.Value, 0, 2) : 2,
                 Apply = (int v) =>
                 {
                     v = Math.Clamp(v, 0, ((Il2CppArrayBase<string>)(object)QualitySettings.names).Length - 1);
@@ -252,8 +252,20 @@ namespace BelmontsCurseMasterOptimizer.UI
             return All.FirstOrDefault(o => o.Path == path && o.Setting != null);
         }
 
+        private static Il2CppSystem.Action<UnityEngine.Localization.Locale> _pinnedLocaleChangedDelegate;
+        private static float _localeRetryTimer = 0f;
+        private static bool _localeHooked = false;
+
         private static void OnLocaleChanged(UnityEngine.Localization.Locale newLocale)
         {
+            AddStrings();
+            _localeRetryTimer = 2.5f; // Poll for 2.5s while new locale string tables load asynchronously
+        }
+
+        public static void PollPendingLocaleStrings(float unscaledDeltaTime)
+        {
+            if (_localeRetryTimer <= 0f) return;
+            _localeRetryTimer -= unscaledDeltaTime;
             AddStrings();
         }
 
@@ -263,13 +275,18 @@ namespace BelmontsCurseMasterOptimizer.UI
             {
                 return;
             }
-            try
+            if (!_localeHooked)
             {
-                LocalizationSettings.add_SelectedLocaleChanged((Il2CppSystem.Action<UnityEngine.Localization.Locale>)new Action<UnityEngine.Localization.Locale>(OnLocaleChanged));
-            }
-            catch (Exception ex)
-            {
-                Plugin.L.LogWarning("[VideoOptions] Failed to subscribe to SelectedLocaleChanged: " + ex.Message);
+                try
+                {
+                    _pinnedLocaleChangedDelegate = (Il2CppSystem.Action<UnityEngine.Localization.Locale>)new Action<UnityEngine.Localization.Locale>(OnLocaleChanged);
+                    LocalizationSettings.add_SelectedLocaleChanged(_pinnedLocaleChangedDelegate);
+                    _localeHooked = true;
+                }
+                catch (Exception ex)
+                {
+                    Plugin.L.LogWarning("[VideoOptions] Failed to subscribe to SelectedLocaleChanged: " + ex.Message);
+                }
             }
             Video = vs;
             AddStrings();
@@ -295,8 +312,12 @@ namespace BelmontsCurseMasterOptimizer.UI
                     ((Il2CppArrayBase<EnumSetting.EnumSettingOption>)(object)val2)[i] = val3;
                 }
                 val._options = val2;
-                ((Setting<int>)(object)val).SetDefaultValue(Math.Clamp(item.Default(), 0, item.Choices.Length - 1));
+                int configValue = Math.Clamp(item.Default(), 0, item.Choices.Length - 1);
+                ((Setting<int>)(object)val).SetDefaultValue(configValue);
                 ((Setting<int>)(object)val).Load();
+                // Enforce BepInEx .cfg as authoritative on startup so stale PlayerPrefs never overwrite user edits
+                ((Setting<int>)(object)val).value = configValue;
+                ((Setting<int>)(object)val).Save();
                 item.Setting = val;
                 list.Add(val);
                 Plugin.L.LogInfo($"Video option '{item.Title}' registered, value: {item.Choices[Math.Clamp(((Setting<int>)(object)val).value, 0, item.Choices.Length - 1)].text}");

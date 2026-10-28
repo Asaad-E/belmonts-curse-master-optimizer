@@ -8,13 +8,16 @@ namespace BelmontsCurseMasterOptimizer.UI
     [HarmonyPatch]
     public static class VideoOptionPatches
     {
-        private static readonly HashSet<IntPtr> started = new HashSet<IntPtr>();
+        private static readonly HashSet<int> started = new HashSet<int>();
 
         [HarmonyPatch(typeof(SettingsViewBase), "Start")]
         [HarmonyPrefix]
         private static void BeforeViewStart(SettingsViewBase __instance)
         {
-            started.Add(((Il2CppObjectBase)__instance).Pointer);
+            if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
+            {
+                started.Add(((UnityEngine.Object)__instance).GetInstanceID());
+            }
             try
             {
                 VideoOptions.AddRows(__instance);
@@ -43,7 +46,7 @@ namespace BelmontsCurseMasterOptimizer.UI
         [HarmonyPostfix]
         private static void AfterViewEnable(SettingsViewBase __instance)
         {
-            if (!started.Contains(((Il2CppObjectBase)__instance).Pointer))
+            if ((UnityEngine.Object)(object)__instance == (UnityEngine.Object)null || !started.Contains(((UnityEngine.Object)__instance).GetInstanceID()))
             {
                 return;
             }
