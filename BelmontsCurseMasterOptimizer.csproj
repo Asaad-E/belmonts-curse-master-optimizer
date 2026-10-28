@@ -53,6 +53,10 @@
       <HintPath>..\..\BepInEx\interop\UnityEngine.PhysicsModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="UnityEngine.Physics2DModule">
+      <HintPath>..\..\BepInEx\interop\UnityEngine.Physics2DModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="UnityEngine.UI">
       <HintPath>..\..\BepInEx\interop\UnityEngine.UI.dll</HintPath>
       <Private>False</Private>

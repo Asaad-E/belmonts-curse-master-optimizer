@@ -30,7 +30,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
                     if ((UnityEngine.Object)(object)anim == (UnityEngine.Object)null) continue;
                     if (anim.cullingMode != AnimatorCullingMode.AlwaysAnimate) continue;
 
-                    // STRICT RULE: Never cull bones on combat actors (enemies, bosses, players)
+                    // STRICT RULE: Never cull bones on combat actors (enemies, bosses, players, traps)
                     // Only cull non-combat environment scenery props (chains, banners, torches, chandeliers)
                     if (IsCombatActor(anim)) continue;
 
@@ -53,8 +53,25 @@ namespace BelmontsCurseMasterOptimizer.Patches
         {
             try
             {
+                GameObject animGo = ((Component)anim).gameObject;
+                if ((UnityEngine.Object)(object)animGo == (UnityEngine.Object)null) return true;
+
+                // 1. Check child bone hierarchy for bone-attached weapon hitboxes, hurtboxes, or colliders
+                if ((UnityEngine.Object)(object)animGo.GetComponentInChildren<ColliderHurtboxHolder>(true) != (UnityEngine.Object)null ||
+                    (UnityEngine.Object)(object)animGo.GetComponentInChildren<BaseDamageCaster>(true) != (UnityEngine.Object)null ||
+                    (UnityEngine.Object)(object)animGo.GetComponentInChildren<DamageCaster>(true) != (UnityEngine.Object)null ||
+                    (UnityEngine.Object)(object)animGo.GetComponentInChildren<BossComponent>(true) != (UnityEngine.Object)null ||
+                    (UnityEngine.Object)(object)animGo.GetComponentInChildren<CharacterController>(true) != (UnityEngine.Object)null ||
+                    (UnityEngine.Object)(object)animGo.GetComponentInChildren<Collider2D>(true) != (UnityEngine.Object)null ||
+                    (UnityEngine.Object)(object)animGo.GetComponentInChildren<Rigidbody2D>(true) != (UnityEngine.Object)null)
+                {
+                    return true;
+                }
+
+                // 2. Walk upward to parent roots to check actor names and root components
                 Transform curr = anim.transform;
-                while ((UnityEngine.Object)(object)curr != (UnityEngine.Object)null)
+                int depth = 0;
+                while ((UnityEngine.Object)(object)curr != (UnityEngine.Object)null && depth < 6)
                 {
                     GameObject go = curr.gameObject;
                     string name = ((UnityEngine.Object)go).name;
@@ -64,20 +81,25 @@ namespace BelmontsCurseMasterOptimizer.Patches
                         name.IndexOf("Enemy", StringComparison.OrdinalIgnoreCase) >= 0 ||
                         name.IndexOf("Mob", StringComparison.OrdinalIgnoreCase) >= 0 ||
                         name.IndexOf("Monster", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        name.IndexOf("Creature", StringComparison.OrdinalIgnoreCase) >= 0)
+                        name.IndexOf("Creature", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        name.IndexOf("Trap", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        name.IndexOf("Hazard", StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         return true;
                     }
 
-                    // Check for combat hurtbox, damage caster, character controller, or boss components
                     if (go.GetComponent<ColliderHurtboxHolder>() != null ||
+                        go.GetComponent<BaseDamageCaster>() != null ||
                         go.GetComponent<DamageCaster>() != null ||
                         go.GetComponent<CharacterController>() != null ||
-                        go.GetComponent<BossComponent>() != null)
+                        go.GetComponent<BossComponent>() != null ||
+                        go.GetComponent<Collider2D>() != null ||
+                        go.GetComponent<Rigidbody2D>() != null)
                     {
                         return true;
                     }
                     curr = curr.parent;
+                    depth++;
                 }
             }
             catch {}
