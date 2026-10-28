@@ -80,6 +80,69 @@ namespace BelmontsCurseMasterOptimizer.UI
             },
             new VideoOption
             {
+                Path = "video/fsrsharpness",
+                Key = "DeckFix_FSRSharpness",
+                Title = "FSR Edge Sharpness",
+                Choices = new (string, string, int)[5]
+                {
+                    ("DeckFix_FSR_20", "Suave (20%)", 0),
+                    ("DeckFix_FSR_40", "Ligero (40%)", 1),
+                    ("DeckFix_FSR_60", "Equilibrado (60%)", 2),
+                    ("DeckFix_FSR_80", "Nítido (80%)", 3),
+                    ("DeckFix_FSR_100", "Fuerte (100%)", 4)
+                },
+                Default = () => (Plugin.FSRSharpnessConfig != null) ? Math.Clamp(Plugin.FSRSharpnessConfig.Value, 0, 4) : 3,
+                Apply = (int v) =>
+                {
+                    v = Math.Clamp(v, 0, 4);
+                    if (Plugin.FSRSharpnessConfig != null) Plugin.FSRSharpnessConfig.Value = v;
+                    Plugin.Instance?.Config.Save();
+                    ApplyCurrentRenderScale();
+                }
+            },
+            new VideoOption
+            {
+                Path = "video/particledensity",
+                Key = "DeckFix_ParticleDensity",
+                Title = "Particle Density",
+                Choices = new (string, string, int)[3]
+                {
+                    ("DeckFix_Particles_100", "100% (Full / Native)", 0),
+                    ("DeckFix_Particles_60", "60% (Optimized)", 1),
+                    ("DeckFix_Particles_30", "30% (Low / Battery)", 2)
+                },
+                Default = () => (Plugin.ParticleDensityConfig != null) ? Math.Clamp(Plugin.ParticleDensityConfig.Value, 0, 2) : 1,
+                Apply = (int v) =>
+                {
+                    v = Math.Clamp(v, 0, 2);
+                    if (Plugin.ParticleDensityConfig != null) Plugin.ParticleDensityConfig.Value = v;
+                    Plugin.Instance?.Config.Save();
+                    ParticlePatches.ApplyToAllActiveParticles();
+                }
+            },
+            new VideoOption
+            {
+                Path = "video/fieldofview",
+                Key = "DeckFix_FoV",
+                Title = "Field of View / Zoom",
+                Choices = new (string, string, int)[5]
+                {
+                    ("DeckFix_FoV_0", "Muy Cerca", 0),
+                    ("DeckFix_FoV_1", "Cerca", 1),
+                    ("DeckFix_FoV_2", "Medio", 2),
+                    ("DeckFix_FoV_3", "Nativo", 3),
+                    ("DeckFix_FoV_4", "Lejos", 4)
+                },
+                Default = () => (Plugin.FoVConfig != null) ? Math.Clamp(Plugin.FoVConfig.Value, 0, 4) : 3,
+                Apply = (int v) =>
+                {
+                    v = Math.Clamp(v, 0, 4);
+                    if (Plugin.FoVConfig != null) Plugin.FoVConfig.Value = v;
+                    Plugin.Instance?.Config.Save();
+                }
+            },
+            new VideoOption
+            {
                 Path = "video/waterreflections",
                 Key = "DeckFix_Reflections",
                 Title = "Water Reflections",
@@ -204,6 +267,19 @@ namespace BelmontsCurseMasterOptimizer.UI
             return false;
         }
 
+        public static float GetTargetFSRSharpness()
+        {
+            int index = (Plugin.FSRSharpnessConfig != null) ? Plugin.FSRSharpnessConfig.Value : 3;
+            switch (index)
+            {
+                case 0: return 0.20f; // Suave (20%)
+                case 1: return 0.40f; // Ligero (40%)
+                case 2: return 0.60f; // Equilibrado (60%)
+                case 4: return 1.00f; // Fuerte (100%)
+                default: return 0.80f; // Nítido (80%, default)
+            }
+        }
+
         public static float GetTargetRenderScale()
         {
             int index = (Plugin.RenderScaleConfig != null) ? Plugin.RenderScaleConfig.Value : 0;
@@ -232,8 +308,9 @@ namespace BelmontsCurseMasterOptimizer.UI
                             urp.renderScale = targetScale;
                         }
 
-                        // When scale is 1.0 (100%), use Auto; when scaled down, use FSR with RCAS edge sharpness
-                        if (targetScale < 0.999f)
+                        float targetSharpness = GetTargetFSRSharpness();
+                        // When scale is downscaled or user configured sharpness, use FSR with RCAS edge sharpness
+                        if (targetScale < 0.999f || (Plugin.FSRSharpnessConfig != null && Plugin.FSRSharpnessConfig.Value > 0))
                         {
                             if (urp.upscalingFilter != UpscalingFilterSelection.FSR)
                             {
@@ -243,9 +320,9 @@ namespace BelmontsCurseMasterOptimizer.UI
                             {
                                 urp.fsrOverrideSharpness = true;
                             }
-                            if (Mathf.Abs(urp.fsrSharpness - 0.90f) > 0.01f)
+                            if (Mathf.Abs(urp.fsrSharpness - targetSharpness) > 0.01f)
                             {
-                                urp.fsrSharpness = 0.90f;
+                                urp.fsrSharpness = targetSharpness;
                             }
                         }
                         else

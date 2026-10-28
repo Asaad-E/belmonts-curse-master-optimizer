@@ -1,18 +1,78 @@
 using System;
 using System.Collections.Generic;
+using Cinemachine;
+using HarmonyLib;
 using Il2CppInterop.Runtime.InteropTypes;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.SceneManagement;
 
 namespace BelmontsCurseMasterOptimizer.Patches
 {
+    [HarmonyPatch]
     public static class CameraZoomPatches
     {
         public static bool ZoomOptimizerEnabled = true;
 
         private static readonly Dictionary<IntPtr, float> _originalShadowDistances = new Dictionary<IntPtr, float>();
         private static bool _isCurrentlyZoomedOut = false;
+
+        public static float GetFoVMultiplier()
+        {
+            int setting = (Plugin.FoVConfig != null) ? Plugin.FoVConfig.Value : 3;
+            switch (setting)
+            {
+                case 0: return 0.80f; // Muy Cerca (-20%)
+                case 1: return 0.90f; // Cerca (-10%)
+                case 2: return 0.95f; // Medio (-5%)
+                case 4: return 1.15f; // Lejos (+15%)
+                default: return 1.00f; // Nativo (100%)
+            }
+        }
+
+        private static string _cachedSceneName = null;
+        private static float _sceneCheckTimer = 0f;
+
+        public static bool IsTitleOrInitScene()
+        {
+            _sceneCheckTimer -= Time.unscaledDeltaTime;
+            if (_sceneCheckTimer <= 0f)
+            {
+                _sceneCheckTimer = 1.0f;
+                _cachedSceneName = SceneManager.GetActiveScene().name;
+            }
+            return !string.IsNullOrEmpty(_cachedSceneName) && (_cachedSceneName.Contains("Title") || _cachedSceneName.Contains("Init"));
+        }
+
+        [HarmonyPatch(typeof(CinemachineBrain), "LateUpdate")]
+        [HarmonyPostfix]
+        public static void AfterBrainLateUpdate(CinemachineBrain __instance)
+        {
+            if ((UnityEngine.Object)(object)__instance == (UnityEngine.Object)null) return;
+            if (MapPatches.IsMapOpen) return;
+
+            float fovMult = GetFoVMultiplier();
+            if (Mathf.Abs(fovMult - 1.0f) < 0.001f) return;
+
+            try
+            {
+                Camera cam = __instance.OutputCamera ?? Camera.main;
+                if ((UnityEngine.Object)(object)cam == (UnityEngine.Object)null) return;
+
+                if (IsTitleOrInitScene()) return;
+
+                if (cam.orthographic)
+                {
+                    cam.orthographicSize = Mathf.Max(0.1f, cam.orthographicSize * fovMult);
+                }
+                else
+                {
+                    cam.fieldOfView = Mathf.Clamp(cam.fieldOfView * fovMult, 10.0f, 160.0f);
+                }
+            }
+            catch {}
+        }
 
         public static void UpdateZoomOptimization()
         {

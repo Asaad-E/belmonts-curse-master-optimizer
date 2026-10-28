@@ -10,7 +10,7 @@ using BelmontsCurseMasterOptimizer.UI;
 
 namespace BelmontsCurseMasterOptimizer
 {
-    [BepInPlugin("belmontscurse.masteroptimizer", "Belmont's Curse Master Optimizer", "1.2.0")]
+    [BepInPlugin("belmontscurse.masteroptimizer", "Belmont's Curse Master Optimizer", "1.3.0")]
     public class Plugin : BasePlugin
     {
         public const string Guid = "belmontscurse.masteroptimizer";
@@ -20,6 +20,9 @@ namespace BelmontsCurseMasterOptimizer
 
         internal static ConfigEntry<int> QualityPresetConfig;
         internal static ConfigEntry<int> RenderScaleConfig;
+        internal static ConfigEntry<int> FSRSharpnessConfig;
+        internal static ConfigEntry<int> ParticleDensityConfig;
+        internal static ConfigEntry<int> FoVConfig;
         internal static ConfigEntry<int> ReflectionModeConfig;
         internal static ConfigEntry<bool> FastMapConfig;
         internal static ConfigEntry<bool> ZoomOptimizerConfig;
@@ -44,6 +47,27 @@ namespace BelmontsCurseMasterOptimizer
                 "RenderScale",
                 0,
                 new ConfigDescription("3D Resolution Scale: 0 = 100% (Native), 1 = 95%, 2 = 90%, 3 = 85%, 4 = 80%, 5 = 75%, 6 = 70%", new AcceptableValueRange<int>(0, 6))
+            );
+
+            FSRSharpnessConfig = Config.Bind<int>(
+                "Graphics",
+                "FSRSharpness",
+                3,
+                new ConfigDescription("FSR RCAS Edge Sharpness: 0 = 20% (Soft), 1 = 40% (Light), 2 = 60% (Balanced), 3 = 80% (Sharp), 4 = 100% (Strong)", new AcceptableValueRange<int>(0, 4))
+            );
+
+            ParticleDensityConfig = Config.Bind<int>(
+                "Graphics",
+                "ParticleDensity",
+                1,
+                new ConfigDescription("Particle density limit: 0 = 100% (Full / Native), 1 = 60% (Optimized), 2 = 30% (Low / Battery Saver)", new AcceptableValueRange<int>(0, 2))
+            );
+
+            FoVConfig = Config.Bind<int>(
+                "Graphics",
+                "FieldOfView",
+                3,
+                new ConfigDescription("Field of View / Camera Framing: 0 = Muy Cerca (0.80x), 1 = Cerca (0.90x), 2 = Medio (0.95x), 3 = Nativo (1.00x), 4 = Lejos (1.15x)", new AcceptableValueRange<int>(0, 4))
             );
 
             ReflectionModeConfig = Config.Bind<int>(
@@ -124,13 +148,15 @@ namespace BelmontsCurseMasterOptimizer
             }
 
             SafePatch(typeof(MapPatches), "MapPatches");
+            SafePatch(typeof(CameraZoomPatches), "CameraZoomPatches");
+            SafePatch(typeof(ParticlePatches), "ParticlePatches");
             SafePatch(typeof(WaterReflectionPatches), "WaterReflectionPatches");
             SafePatch(typeof(StutterAndGCPatches), "StutterAndGCPatches");
             SafePatch(typeof(CullingAndCPUPatches), "CullingAndCPUPatches");
             SafePatch(typeof(VideoOptionPatches), "VideoOptionPatches");
 
             Config.Save();
-            L.LogInfo("Belmont's Curse Master Optimizer v1.1.0 successfully loaded!");
+            L.LogInfo("Belmont's Curse Master Optimizer v1.3.0 successfully loaded!");
         }
     }
 }
