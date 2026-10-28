@@ -180,12 +180,14 @@ namespace BelmontsCurseMasterOptimizer.UI
         {
             try
             {
+                // ONLY lock to 100% native resolution when actively inside Video Options / Settings screen
+                // so that the settings options and dropdowns are razor-sharp.
+                // Do NOT lock on pause or map screen, because switching renderScale re-allocates the GPU
+                // framebuffer, which causes massive FPS drop and stutter every time the map is opened or closed!
                 if (VideoOptionPatches.IsSettingsOpen) return true;
-                if (MapPatches.IsGameMenuOpen) return true;
-                if (Time.timeScale == 0f) return true;
 
                 string sceneName = SceneManager.GetActiveScene().name;
-                if (!string.IsNullOrEmpty(sceneName) && (sceneName.Contains("Title") || sceneName.Contains("Menu") || sceneName.Contains("Init")))
+                if (!string.IsNullOrEmpty(sceneName) && (sceneName.Contains("Title") || sceneName.Contains("Init")))
                 {
                     return true;
                 }

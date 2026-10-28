@@ -83,6 +83,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPostfix]
         public static void AfterOpenMap(UIMapManager __instance)
         {
+            IsMapOpen = true;
             if (!FastMapEnabled) return;
 
             try
@@ -100,6 +101,13 @@ namespace BelmontsCurseMasterOptimizer.Patches
             }
         }
 
+        [HarmonyPatch(typeof(UIMapManager), "OnMapClosed")]
+        [HarmonyPostfix]
+        public static void AfterOnMapClosed()
+        {
+            IsMapOpen = false;
+        }
+
         [HarmonyPatch(typeof(GameMenuManager), "OnMenuOpen")]
         [HarmonyPostfix]
         public static void AfterGameMenuOpen(GameMenuManager __instance)
@@ -111,6 +119,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPostfix]
         public static void AfterOpenOnMap(GameMenuManager __instance)
         {
+            IsMapOpen = true;
             _activeGameMenuManager = __instance;
         }
 
@@ -118,6 +127,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPostfix]
         public static void AfterGameMenuClose()
         {
+            IsMapOpen = false;
             _activeGameMenuManager = null;
         }
 
@@ -125,6 +135,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPostfix]
         public static void AfterGameMenuCloseDirect()
         {
+            IsMapOpen = false;
             _activeGameMenuManager = null;
         }
 
@@ -227,11 +238,14 @@ namespace BelmontsCurseMasterOptimizer.Patches
                     __instance._preLoadedMaps = new Il2CppSystem.Collections.Generic.Dictionary<LevelID, LevelMap>();
                 }
 
-                if ((UnityEngine.Object)(object)__instance._currentMapObject != (UnityEngine.Object)null &&
-                    (UnityEngine.Object)(object)__instance._currentOpenMapSceneOperationLevel != (UnityEngine.Object)null)
+                if ((UnityEngine.Object)(object)__instance._currentMapObject != (UnityEngine.Object)null)
                 {
                     LevelID targetLevel = __instance._currentOpenMapSceneOperationLevel;
-                    if (!__instance._preLoadedMaps.ContainsKey(targetLevel))
+                    if ((UnityEngine.Object)(object)targetLevel == (UnityEngine.Object)null)
+                    {
+                        targetLevel = __instance._currentlyOpenedLevel;
+                    }
+                    if ((UnityEngine.Object)(object)targetLevel != (UnityEngine.Object)null && !__instance._preLoadedMaps.ContainsKey(targetLevel))
                     {
                         __instance._preLoadedMaps[targetLevel] = __instance._currentMapObject;
                         Plugin.L.LogInfo("[Map] Cached LevelMap in _preLoadedMaps for " + ((UnityEngine.Object)targetLevel).name);
@@ -248,6 +262,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPrefix]
         public static bool PrefixGetLevelMapOpeningType(UIMapLevelManager __instance, LevelID targetLevel, ref UIMapLevelManager.LevelMapSceneOpeningType __result)
         {
+            IsMapOpen = true;
             if (!FastMapEnabled || (UnityEngine.Object)(object)__instance == (UnityEngine.Object)null) return true;
 
             try
@@ -279,15 +294,13 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPrefix]
         public static void BeforeCloseCurrentMapInternal(UIMapLevelManager __instance)
         {
+            IsMapOpen = false;
             if (!FastMapEnabled || (UnityEngine.Object)(object)__instance == (UnityEngine.Object)null) return;
 
             try
             {
                 _activeLevelManager = __instance;
-                if (__instance._preLoadedMaps != null &&
-                    (UnityEngine.Object)(object)__instance._currentOpenMapSceneOperationLevel != (UnityEngine.Object)null &&
-                    __instance._preLoadedMaps.ContainsKey(__instance._currentOpenMapSceneOperationLevel) &&
-                    (UnityEngine.Object)(object)__instance._preLoadedMaps[__instance._currentOpenMapSceneOperationLevel] != (UnityEngine.Object)null)
+                if ((UnityEngine.Object)(object)__instance._currentMapObject != (UnityEngine.Object)null)
                 {
                     __instance._currentSceneOpeningType = UIMapLevelManager.LevelMapSceneOpeningType.ActivatePreLoaded;
                     Plugin.L.LogDebug("[Map] Switched close operation to ActivatePreLoaded (instant <1ms closure)");
