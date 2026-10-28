@@ -60,14 +60,14 @@ namespace BelmontsCurseMasterOptimizer
                 "Graphics",
                 "ParticleDensity",
                 1,
-                new ConfigDescription("Particle density limit: 0 = 100% (Full / Native), 1 = 60% (Optimized), 2 = 30% (Low / Battery Saver)", new AcceptableValueRange<int>(0, 2))
+                new ConfigDescription("Particle density limit: 0 = 100% (Full), 1 = 60% (Optimized), 2 = 30% (Low / Battery Saver)", new AcceptableValueRange<int>(0, 2))
             );
 
             FoVConfig = Config.Bind<int>(
                 "Graphics",
                 "FieldOfView",
                 3,
-                new ConfigDescription("Field of View / Camera Framing: 0 = Muy Cerca (0.80x), 1 = Cerca (0.90x), 2 = Medio (0.95x), 3 = Nativo (1.00x), 4 = Lejos (1.15x)", new AcceptableValueRange<int>(0, 4))
+                new ConfigDescription("Field of View / Camera Framing: 0 = Very Close (0.80x), 1 = Close (0.90x), 2 = Medium (0.95x), 3 = Native (1.00x), 4 = Far (1.15x)", new AcceptableValueRange<int>(0, 4))
             );
 
             ReflectionModeConfig = Config.Bind<int>(

@@ -1,6 +1,6 @@
 # Belmont's Curse Master Optimizer
 
-**Belmont's Curse Master Optimizer** is a comprehensive performance, smoothness, and quality-of-life mod for *Castlevania: Belmont's Curse*. It delivers a rock-solid, fluid 60 FPS gameplay experience on Steam Deck and PC by eliminating the game's most frustrating traversal stutters, map loading freezes, and rendering bottlenecks.
+**Belmont's Curse Master Optimizer** is a comprehensive performance, smoothness, and quality-of-life mod for *Castlevania: Belmont's Curse*. It is designed to improve performance, frame-pacing, and responsiveness on Steam Deck and PC by addressing traversal stutters, map loading delays, and rendering bottlenecks.
 
 Every optimization is fully configurable live in-game through the native **Settings > Video** menu with complete controller and Steam Deck gamepad support.
 
@@ -63,6 +63,9 @@ Once installed, open **Settings > Video** to configure:
 | **Max FPS** | 30 / 40 / 45 / 60 / 120 / Unlimited | Target framerate limit. Includes dedicated 40 FPS and 45 FPS modes for Steam Deck. |
 | **Graphics Quality** | Low / Medium / High | Overall graphics quality and asset fidelity. |
 | **3D Resolution Scale** | 100% to 70% (5% steps) | Independent 3D scene resolution scale during gameplay. Automatically locked to 100% in all menus for crystal-clear text. |
+| **FSR Edge Sharpness** | Soft (20%) / Light (40%) / Balanced (60%) / Sharp (80%) / Strong (100%) | AMD FidelityFX RCAS contrast-adaptive edge reconstruction sharpness. |
+| **Particle Density** | 100% (Full) / 60% (Optimized) / 30% (Low) | Caps particle count and emission rate, and trims heavy shadow overhead to save GPU cycles. |
+| **Field of View / Zoom** | Very Close / Close / Medium / Native / Far | Non-destructive camera framing via Cinemachine integration. |
 | **Water Reflections** | Optimized (60 FPS) / Frame-Skip / Off | Silky smooth 60 FPS reflection, legacy frame-skip, or completely off for battery savings. |
 | **Fast Map Screen** | Enabled / Disabled | Eliminates the 2-second map close freeze and optimizes map rendering cameras. |
 | **Wide View Optimizer** | Enabled / Disabled | Automatically scales shadow distance during wide camera zoom-outs. |

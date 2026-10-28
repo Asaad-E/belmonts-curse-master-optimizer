@@ -85,11 +85,11 @@ namespace BelmontsCurseMasterOptimizer.UI
                 Title = "FSR Edge Sharpness",
                 Choices = new (string, string, int)[5]
                 {
-                    ("DeckFix_FSR_20", "Suave (20%)", 0),
-                    ("DeckFix_FSR_40", "Ligero (40%)", 1),
-                    ("DeckFix_FSR_60", "Equilibrado (60%)", 2),
-                    ("DeckFix_FSR_80", "Nítido (80%)", 3),
-                    ("DeckFix_FSR_100", "Fuerte (100%)", 4)
+                    ("DeckFix_FSR_20", "Soft (20%)", 0),
+                    ("DeckFix_FSR_40", "Light (40%)", 1),
+                    ("DeckFix_FSR_60", "Balanced (60%)", 2),
+                    ("DeckFix_FSR_80", "Sharp (80%)", 3),
+                    ("DeckFix_FSR_100", "Strong (100%)", 4)
                 },
                 Default = () => (Plugin.FSRSharpnessConfig != null) ? Math.Clamp(Plugin.FSRSharpnessConfig.Value, 0, 4) : 3,
                 Apply = (int v) =>
@@ -107,9 +107,9 @@ namespace BelmontsCurseMasterOptimizer.UI
                 Title = "Particle Density",
                 Choices = new (string, string, int)[3]
                 {
-                    ("DeckFix_Particles_100", "100% (Full / Native)", 0),
+                    ("DeckFix_Particles_100", "100% (Full)", 0),
                     ("DeckFix_Particles_60", "60% (Optimized)", 1),
-                    ("DeckFix_Particles_30", "30% (Low / Battery)", 2)
+                    ("DeckFix_Particles_30", "30% (Low)", 2)
                 },
                 Default = () => (Plugin.ParticleDensityConfig != null) ? Math.Clamp(Plugin.ParticleDensityConfig.Value, 0, 2) : 1,
                 Apply = (int v) =>
@@ -127,11 +127,11 @@ namespace BelmontsCurseMasterOptimizer.UI
                 Title = "Field of View / Zoom",
                 Choices = new (string, string, int)[5]
                 {
-                    ("DeckFix_FoV_0", "Muy Cerca", 0),
-                    ("DeckFix_FoV_1", "Cerca", 1),
-                    ("DeckFix_FoV_2", "Medio", 2),
-                    ("DeckFix_FoV_3", "Nativo", 3),
-                    ("DeckFix_FoV_4", "Lejos", 4)
+                    ("DeckFix_FoV_0", "Very Close", 0),
+                    ("DeckFix_FoV_1", "Close", 1),
+                    ("DeckFix_FoV_2", "Medium", 2),
+                    ("DeckFix_FoV_3", "Native", 3),
+                    ("DeckFix_FoV_4", "Far", 4)
                 },
                 Default = () => (Plugin.FoVConfig != null) ? Math.Clamp(Plugin.FoVConfig.Value, 0, 4) : 3,
                 Apply = (int v) =>
