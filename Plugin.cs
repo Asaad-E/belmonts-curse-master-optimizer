@@ -19,6 +19,7 @@ namespace BelmontsCurseMasterOptimizer
         internal static ManualLogSource L;
 
         internal static ConfigEntry<int> QualityPresetConfig;
+        internal static ConfigEntry<int> RenderScaleConfig;
         internal static ConfigEntry<int> ReflectionModeConfig;
         internal static ConfigEntry<bool> FastMapConfig;
         internal static ConfigEntry<bool> ZoomOptimizerConfig;
@@ -35,7 +36,14 @@ namespace BelmontsCurseMasterOptimizer
                 "Graphics",
                 "QualityPreset",
                 2,
-                new ConfigDescription("Graphics quality preset: 0 = Low, 1 = Medium (Native 1:1 Sharp Text), 2 = High (Native 1:1 Sharp Text)", new AcceptableValueRange<int>(0, 2))
+                new ConfigDescription("Graphics quality preset: 0 = Low, 1 = Medium, 2 = High", new AcceptableValueRange<int>(0, 2))
+            );
+
+            RenderScaleConfig = Config.Bind<int>(
+                "Graphics",
+                "RenderScale",
+                0,
+                new ConfigDescription("3D Resolution Scale: 0 = 100% (Native), 1 = 95%, 2 = 90%, 3 = 85%, 4 = 80%, 5 = 75%, 6 = 70%, 7 = 65%, 8 = 60%, 9 = 55%, 10 = 50%", new AcceptableValueRange<int>(0, 10))
             );
 
             ReflectionModeConfig = Config.Bind<int>(

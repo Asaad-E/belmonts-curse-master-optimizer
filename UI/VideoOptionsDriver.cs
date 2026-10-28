@@ -30,28 +30,8 @@ namespace BelmontsCurseMasterOptimizer.UI
             // 3. Poll asynchronous string table loading after language changes
             VideoOptions.PollPendingLocaleStrings(Time.unscaledDeltaTime);
 
-            // 5. Zero-Latency RenderScale & UpscalingFilter Lock: Guarantee text sharpness every frame on Med/High
-            var pipe = GraphicsSettings.currentRenderPipeline;
-            if (pipe != null)
-            {
-                var urp = pipe.TryCast<UniversalRenderPipelineAsset>();
-                if (urp != null)
-                {
-                    int quality = ((Plugin.QualityPresetConfig != null) ? Plugin.QualityPresetConfig.Value : QualitySettings.GetQualityLevel());
-                    float targetScale = (quality >= 1) ? 1.0f : 0.85f;
-                    if (Mathf.Abs(urp.renderScale - targetScale) > 0.001f)
-                    {
-                        urp.renderScale = targetScale;
-                    }
-
-                    // Independent enforcement: ensure FSR filter is never left active on Medium/High
-                    UpscalingFilterSelection targetFilter = (quality >= 1) ? UpscalingFilterSelection.Auto : UpscalingFilterSelection.FSR;
-                    if (urp.upscalingFilter != targetFilter)
-                    {
-                        urp.upscalingFilter = targetFilter;
-                    }
-                }
-            }
+            // 5. Zero-Latency RenderScale & UpscalingFilter: Apply user-configured scale (100% to 50% in 5% steps)
+            VideoOptions.ApplyCurrentRenderScale();
 
             // 6. Periodic engine maintenance every 1 second: upload buffer and SRP batcher
             tweakTimer -= Time.unscaledDeltaTime;

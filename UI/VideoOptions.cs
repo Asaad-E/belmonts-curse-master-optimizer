@@ -47,9 +47,37 @@ namespace BelmontsCurseMasterOptimizer.UI
                         Application.targetFrameRate = targetFrameRate;
                         ReapplyFrames = 3;
                     }
-                    EnforceRenderScale(v);
+                    ApplyCurrentRenderScale();
                     if (Plugin.QualityPresetConfig != null) Plugin.QualityPresetConfig.Value = v;
                     Plugin.Instance?.Config.Save();
+                }
+            },
+            new VideoOption
+            {
+                Path = "video/renderscale",
+                Key = "DeckFix_RenderScale",
+                Title = "3D Resolution Scale",
+                Choices = new (string, string, int)[11]
+                {
+                    ("DeckFix_Scale_100", "100% (Native 800p)", 0),
+                    ("DeckFix_Scale_95", "95% (760p)", 1),
+                    ("DeckFix_Scale_90", "90% (720p)", 2),
+                    ("DeckFix_Scale_85", "85% (680p)", 3),
+                    ("DeckFix_Scale_80", "80% (640p)", 4),
+                    ("DeckFix_Scale_75", "75% (600p)", 5),
+                    ("DeckFix_Scale_70", "70% (560p)", 6),
+                    ("DeckFix_Scale_65", "65% (520p)", 7),
+                    ("DeckFix_Scale_60", "60% (480p)", 8),
+                    ("DeckFix_Scale_55", "55% (440p)", 9),
+                    ("DeckFix_Scale_50", "50% (400p)", 10)
+                },
+                Default = () => (Plugin.RenderScaleConfig != null) ? Math.Clamp(Plugin.RenderScaleConfig.Value, 0, 10) : 0,
+                Apply = (int v) =>
+                {
+                    v = Math.Clamp(v, 0, 10);
+                    if (Plugin.RenderScaleConfig != null) Plugin.RenderScaleConfig.Value = v;
+                    Plugin.Instance?.Config.Save();
+                    ApplyCurrentRenderScale();
                 }
             },
             new VideoOption
@@ -150,7 +178,14 @@ namespace BelmontsCurseMasterOptimizer.UI
         internal static int ReapplyFrames = -1;
         internal static VideoSettings Video;
 
-        public static void EnforceRenderScale(int qualityLevel)
+        public static float GetTargetRenderScale()
+        {
+            int index = (Plugin.RenderScaleConfig != null) ? Plugin.RenderScaleConfig.Value : 0;
+            float scale = 1.0f - (index * 0.05f);
+            return Mathf.Clamp(scale, 0.50f, 1.0f);
+        }
+
+        public static void ApplyCurrentRenderScale()
         {
             try
             {
@@ -160,15 +195,17 @@ namespace BelmontsCurseMasterOptimizer.UI
                     var urp = pipe.TryCast<UniversalRenderPipelineAsset>();
                     if (urp != null)
                     {
-                        // STRICT USER MANDATE: Text and UI detail must NEVER be decreased on Medium or High!
-                        if (qualityLevel >= 1)
+                        float targetScale = GetTargetRenderScale();
+                        if (Mathf.Abs(urp.renderScale - targetScale) > 0.001f)
                         {
-                            urp.renderScale = 1.0f; // 100% native pixel crispness
-                            urp.upscalingFilter = UpscalingFilterSelection.Auto;
+                            urp.renderScale = targetScale;
                         }
-                        else
+
+                        // When scale is 1.0 (100%), use Auto; when scaled down, use FSR for high-quality reconstruction
+                        UpscalingFilterSelection targetFilter = (targetScale >= 0.999f) ? UpscalingFilterSelection.Auto : UpscalingFilterSelection.FSR;
+                        if (urp.upscalingFilter != targetFilter)
                         {
-                            urp.renderScale = 0.85f;
+                            urp.upscalingFilter = targetFilter;
                         }
                         urp.useSRPBatcher = true;
                     }
@@ -176,7 +213,7 @@ namespace BelmontsCurseMasterOptimizer.UI
             }
             catch (System.Exception ex)
             {
-                Plugin.L.LogWarning("EnforceRenderScale: " + ex.Message);
+                Plugin.L.LogWarning("ApplyCurrentRenderScale: " + ex.Message);
             }
         }
 

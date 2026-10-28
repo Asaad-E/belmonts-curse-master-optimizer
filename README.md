@@ -60,11 +60,13 @@ Once installed, open **Settings > Video** to configure:
 
 | Setting | Options | Description |
 | :--- | :--- | :--- |
-| **Graphics Quality** | Low / Medium / High | Overall graphics quality. Medium & High strictly preserve native 1:1 text sharpness. |
+| **Max FPS** | 30 / 40 / 45 / 60 / 120 / Unlimited | Target framerate limit. Includes dedicated 40 FPS and 45 FPS modes for Steam Deck. |
+| **Graphics Quality** | Low / Medium / High | Overall graphics quality and asset fidelity. |
+| **3D Resolution Scale** | 100% to 50% (5% steps) | Independent 3D internal resolution scale with FSR reconstruction. UI and text remain 100% native. |
 | **Water Reflections** | Optimized (60 FPS) / Frame-Skip / Off | Silky smooth 60 FPS reflection, legacy frame-skip, or completely off for battery savings. |
-| **Fast Map Screen** | Enabled / Disabled | Eliminates the 2-second map close freeze and freezes 3D background rendering. |
+| **Fast Map Screen** | Enabled / Disabled | Eliminates the 2-second map close freeze and optimizes map rendering cameras. |
 | **Wide View Optimizer** | Enabled / Disabled | Automatically scales shadow distance during wide camera zoom-outs. |
-| **Off-Screen CPU Culling** | Enabled / Disabled | Culls off-screen enemy bone transform updates to reduce CPU usage. |
+| **Off-Screen CPU Culling** | Enabled / Disabled | Culls off-screen non-combat prop bone transform updates to reduce CPU usage. |
 | **Stutter & Traversal Fix** | Enabled / Disabled | Incremental background GC and expanded streaming buffers for hitch-free exploration. |
 
 ---
