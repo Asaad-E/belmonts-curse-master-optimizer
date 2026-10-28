@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Doozy.Runtime.UIManager.Containers;
 using HarmonyLib;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 using Il2CppInterop.Runtime.InteropTypes;
 
@@ -21,52 +22,66 @@ namespace BelmontsCurseMasterOptimizer.Patches
         private static Color _savedBgColor;
         private static UIMapManager _activeMapManager = null;
         private static UIMapLevelManager _activeLevelManager = null;
+        private static GameMenuManager _activeGameMenuManager = null;
 
-        private static bool IsMapUIActive(UIMapManager mgr)
+        public static bool IsMapActive()
         {
-            if ((UnityEngine.Object)(object)mgr == (UnityEngine.Object)null) return false;
-
             try
             {
-                UIMapLevelManager lvlMgr = mgr.levelManager;
-                if ((UnityEngine.Object)(object)lvlMgr != (UnityEngine.Object)null)
+                // 1. Check UIMapManager
+                var mapMgr = _activeMapManager ?? UIMapManager.Get();
+                if ((UnityEngine.Object)(object)mapMgr != (UnityEngine.Object)null)
                 {
-                    if (lvlMgr.IsOpened() || lvlMgr.IsOpening()) return true;
-                    if ((UnityEngine.Object)(object)lvlMgr.levelMapContainer != (UnityEngine.Object)null &&
-                        (lvlMgr.levelMapContainer.isVisible || lvlMgr.levelMapContainer.isShowing))
+                    var lvlMgr = mapMgr.levelManager;
+                    if ((UnityEngine.Object)(object)lvlMgr != (UnityEngine.Object)null)
+                    {
+                        if (lvlMgr.IsOpened() || lvlMgr.IsOpening()) return true;
+                        if ((UnityEngine.Object)(object)lvlMgr.levelMapContainer != (UnityEngine.Object)null &&
+                            (lvlMgr.levelMapContainer.isVisible || lvlMgr.levelMapContainer.isShowing))
+                        {
+                            return true;
+                        }
+                    }
+
+                    var wrldMgr = mapMgr.worldManager;
+                    if ((UnityEngine.Object)(object)wrldMgr != (UnityEngine.Object)null)
+                    {
+                        if (wrldMgr.IsOpened() || wrldMgr.IsOpening()) return true;
+                        if ((UnityEngine.Object)(object)wrldMgr.worldMapContainer != (UnityEngine.Object)null &&
+                            (wrldMgr.worldMapContainer.isVisible || wrldMgr.worldMapContainer.isShowing))
+                        {
+                            return true;
+                        }
+                    }
+
+                    if ((UnityEngine.Object)(object)mapMgr.mapContainer != (UnityEngine.Object)null &&
+                        (mapMgr.mapContainer.isVisible || mapMgr.mapContainer.isShowing))
                     {
                         return true;
                     }
                 }
 
-                if ((UnityEngine.Object)(object)mgr.mapContainer != (UnityEngine.Object)null &&
-                    (mgr.mapContainer.isVisible || mgr.mapContainer.isShowing))
+                // 2. Check GameMenuManager
+                if ((UnityEngine.Object)(object)_activeGameMenuManager != (UnityEngine.Object)null && _activeGameMenuManager.IsShowing())
                 {
-                    return true;
+                    var mapTab = _activeGameMenuManager.mapTab;
+                    if ((UnityEngine.Object)(object)mapTab != (UnityEngine.Object)null &&
+                        (UnityEngine.Object)(object)mapTab.tabContainer != (UnityEngine.Object)null &&
+                        (mapTab.tabContainer.isVisible || mapTab.tabContainer.isShowing))
+                    {
+                        return true;
+                    }
                 }
             }
             catch {}
             return false;
         }
 
-        [HarmonyPatch(typeof(UIMapManager), "OpenMap")]
-        [HarmonyPostfix]
-        public static void AfterOpenMap(UIMapManager __instance)
+        public static void FreezeWorldCamera()
         {
-            if (!FastMapEnabled) return;
-
+            if (!FastMapEnabled || IsMapOpen) return;
             try
             {
-                _activeMapManager = __instance;
-                if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null &&
-                    (UnityEngine.Object)(object)__instance.levelManager != (UnityEngine.Object)null)
-                {
-                    _activeLevelManager = __instance.levelManager;
-                }
-
-                // Guard against premature culling if OpenMap early-returned without showing map
-                if (IsMapOpen || !IsMapUIActive(__instance)) return;
-
                 Camera cam = Camera.main;
                 if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null && cam.cullingMask != 0)
                 {
@@ -80,51 +95,12 @@ namespace BelmontsCurseMasterOptimizer.Patches
                     cam.clearFlags = CameraClearFlags.SolidColor;
                     cam.backgroundColor = Color.black;
                     IsMapOpen = true;
-                    Plugin.L.LogDebug($"[Map] AfterOpenMap: 3D camera frozen (saved mask: {_savedWorldCullingMask})");
+                    Plugin.L.LogDebug($"[Map] FreezeWorldCamera: 3D camera frozen (saved mask: {_savedWorldCullingMask})");
                 }
             }
             catch (Exception ex)
             {
-                Plugin.L.LogWarning("[Map] AfterOpenMap error: " + ex.Message);
-            }
-        }
-
-        [HarmonyPatch(typeof(UIMapManager), "OnMapClosed")]
-        [HarmonyPostfix]
-        public static void AfterMapClosed(UIMapManager __instance)
-        {
-            RestoreWorldCamera();
-        }
-
-        [HarmonyPatch(typeof(UIMapLevelManager), "OnDisable")]
-        [HarmonyPostfix]
-        public static void AfterMapLevelDisable()
-        {
-            if (IsMapOpen)
-            {
-                RestoreWorldCamera();
-            }
-        }
-
-        [HarmonyPatch(typeof(UIMapLevelManager), "OnDestroy")]
-        [HarmonyPostfix]
-        public static void AfterMapLevelDestroy()
-        {
-            if (IsMapOpen)
-            {
-                RestoreWorldCamera();
-            }
-            _activeLevelManager = null;
-            _activeMapManager = null;
-        }
-
-        [HarmonyPatch(typeof(RoomManager.RoomManagerSystem), "OnEnterRoom")]
-        [HarmonyPostfix]
-        public static void AfterRoomEnter()
-        {
-            if (IsMapOpen || ((UnityEngine.Object)(object)Camera.main != (UnityEngine.Object)null && Camera.main.cullingMask == 0))
-            {
-                RestoreWorldCamera();
+                Plugin.L.LogWarning("[Map] FreezeWorldCamera exception: " + ex.Message);
             }
         }
 
@@ -167,31 +143,222 @@ namespace BelmontsCurseMasterOptimizer.Patches
             }
         }
 
+        private static void OptimizeMapCamera(Camera cam)
+        {
+            if ((UnityEngine.Object)(object)cam == (UnityEngine.Object)null) return;
+            try
+            {
+                var data = cam.GetComponent<UniversalAdditionalCameraData>();
+                if ((UnityEngine.Object)(object)data != (UnityEngine.Object)null)
+                {
+                    data.renderShadows = false;
+                    data.renderPostProcessing = false;
+                    data.requiresDepthTexture = false;
+                    data.requiresColorTexture = false;
+                }
+            }
+            catch {}
+        }
+
         // Failsafe watchdog called from VideoOptionsDriver.Update() every frame
         public static void FailsafeCameraWatchdog()
         {
             try
             {
-                if (IsMapOpen)
+                bool active = IsMapActive();
+                if (active)
                 {
-                    // If map is flagged open but UI containers are actually inactive (e.g. death or cutscene bypass), recover!
-                    if (!IsMapUIActive(_activeMapManager))
+                    if (!IsMapOpen)
                     {
-                        Plugin.L.LogWarning("[Map] Watchdog detected inactive UI while IsMapOpen=true. Recovering camera!");
-                        RestoreWorldCamera();
+                        FreezeWorldCamera();
                     }
                 }
                 else
                 {
-                    Camera cam = Camera.main;
-                    if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null && cam.cullingMask == 0)
+                    if (IsMapOpen)
                     {
-                        Plugin.L.LogWarning("[Map] Watchdog detected stranded cullingMask == 0. Recovering world camera!");
                         RestoreWorldCamera();
+                    }
+                    else
+                    {
+                        Camera cam = Camera.main;
+                        if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null && cam.cullingMask == 0)
+                        {
+                            Plugin.L.LogWarning("[Map] Watchdog detected stranded cullingMask == 0. Recovering world camera!");
+                            RestoreWorldCamera();
+                        }
                     }
                 }
             }
             catch {}
+        }
+
+        [HarmonyPatch(typeof(UIMapManager), "OpenMap")]
+        [HarmonyPostfix]
+        public static void AfterOpenMap(UIMapManager __instance)
+        {
+            if (!FastMapEnabled) return;
+
+            try
+            {
+                _activeMapManager = __instance;
+                if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null &&
+                    (UnityEngine.Object)(object)__instance.levelManager != (UnityEngine.Object)null)
+                {
+                    _activeLevelManager = __instance.levelManager;
+                }
+
+                FreezeWorldCamera();
+            }
+            catch (Exception ex)
+            {
+                Plugin.L.LogWarning("[Map] AfterOpenMap error: " + ex.Message);
+            }
+        }
+
+        [HarmonyPatch(typeof(UIMapManager), "OnMapClosed")]
+        [HarmonyPostfix]
+        public static void AfterMapClosed(UIMapManager __instance)
+        {
+            RestoreWorldCamera();
+        }
+
+        [HarmonyPatch(typeof(GameMenuManager), "OnMenuOpen")]
+        [HarmonyPostfix]
+        public static void AfterGameMenuOpen(GameMenuManager __instance)
+        {
+            _activeGameMenuManager = __instance;
+            if (IsMapActive())
+            {
+                FreezeWorldCamera();
+            }
+        }
+
+        [HarmonyPatch(typeof(GameMenuManager), "OpenOnMap")]
+        [HarmonyPostfix]
+        public static void AfterOpenOnMap(GameMenuManager __instance)
+        {
+            _activeGameMenuManager = __instance;
+            FreezeWorldCamera();
+        }
+
+        [HarmonyPatch(typeof(GameMenuManager), "OnMenuClose")]
+        [HarmonyPostfix]
+        public static void AfterGameMenuClose()
+        {
+            _activeGameMenuManager = null;
+            RestoreWorldCamera();
+        }
+
+        [HarmonyPatch(typeof(GameMenuManager), "Close")]
+        [HarmonyPostfix]
+        public static void AfterGameMenuCloseDirect()
+        {
+            _activeGameMenuManager = null;
+            RestoreWorldCamera();
+        }
+
+        [HarmonyPatch(typeof(UIMapWorldManager), "OpenWorldMap", new Type[0])]
+        [HarmonyPostfix]
+        public static void AfterOpenWorldMap(UIMapWorldManager __instance)
+        {
+            try
+            {
+                FreezeWorldCamera();
+                // Disable LevelMapCamera to eliminate redundant draw calls while in Area/World view
+                if (_activeLevelManager != null && _activeLevelManager._currentMapObject != null && _activeLevelManager._currentMapObject.mapCamera != null)
+                {
+                    var cam = _activeLevelManager._currentMapObject.mapCamera.mapCamera;
+                    if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null)
+                    {
+                        cam.enabled = false;
+                    }
+                }
+            }
+            catch {}
+        }
+
+        [HarmonyPatch(typeof(UIMapWorldManager), "CloseWorldMap")]
+        [HarmonyPostfix]
+        public static void AfterCloseWorldMap()
+        {
+            try
+            {
+                // Re-enable LevelMapCamera when returning to sub-area view
+                if (_activeLevelManager != null && _activeLevelManager._currentMapObject != null && _activeLevelManager._currentMapObject.mapCamera != null)
+                {
+                    var cam = _activeLevelManager._currentMapObject.mapCamera.mapCamera;
+                    if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null)
+                    {
+                        cam.enabled = true;
+                    }
+                }
+            }
+            catch {}
+        }
+
+        [HarmonyPatch(typeof(UIMapLevelManager), "ApplyRenderTexture")]
+        [HarmonyPostfix]
+        public static void AfterApplyLevelRenderTexture(UIMapLevelManager __instance, LevelMap levelMap)
+        {
+            try
+            {
+                if ((UnityEngine.Object)(object)levelMap != (UnityEngine.Object)null &&
+                    (UnityEngine.Object)(object)levelMap.mapCamera != (UnityEngine.Object)null &&
+                    (UnityEngine.Object)(object)levelMap.mapCamera.mapCamera != (UnityEngine.Object)null)
+                {
+                    OptimizeMapCamera(levelMap.mapCamera.mapCamera);
+                }
+            }
+            catch {}
+        }
+
+        [HarmonyPatch(typeof(UIMapWorldManager), "ApplyRenderTexture")]
+        [HarmonyPostfix]
+        public static void AfterApplyWorldRenderTexture(UIMapWorldManager __instance, WorldMap worldMap)
+        {
+            try
+            {
+                if ((UnityEngine.Object)(object)worldMap != (UnityEngine.Object)null &&
+                    (UnityEngine.Object)(object)worldMap.mapCamera != (UnityEngine.Object)null &&
+                    (UnityEngine.Object)(object)worldMap.mapCamera.mapCamera != (UnityEngine.Object)null)
+                {
+                    OptimizeMapCamera(worldMap.mapCamera.mapCamera);
+                }
+            }
+            catch {}
+        }
+
+        [HarmonyPatch(typeof(UIMapLevelManager), "OnDisable")]
+        [HarmonyPostfix]
+        public static void AfterMapLevelDisable()
+        {
+            if (!IsMapActive() && IsMapOpen)
+            {
+                RestoreWorldCamera();
+            }
+        }
+
+        [HarmonyPatch(typeof(UIMapLevelManager), "OnDestroy")]
+        [HarmonyPostfix]
+        public static void AfterMapLevelDestroy()
+        {
+            if (IsMapOpen)
+            {
+                RestoreWorldCamera();
+            }
+            _activeLevelManager = null;
+            _activeMapManager = null;
+        }
+
+        [HarmonyPatch(typeof(RoomManager.RoomManagerSystem), "OnEnterRoom")]
+        [HarmonyPostfix]
+        public static void AfterRoomEnter()
+        {
+            if (IsMapOpen || ((UnityEngine.Object)(object)Camera.main != (UnityEngine.Object)null && Camera.main.cullingMask == 0))
+            {
+                RestoreWorldCamera();
+            }
         }
 
         [HarmonyPatch(typeof(UIMapLevelManager), "OnLoadLevelMapCompleted")]
