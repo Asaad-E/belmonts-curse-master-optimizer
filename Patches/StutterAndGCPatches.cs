@@ -125,11 +125,11 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 // Do NOT allow full GC when _inRoomChange is true, because <RoomChangeTask>b__37_15 calls GC.Collect() mid-doorway!
                 if (IsInTrueLoadingScreen())
                 {
-                    _lastMemoryAtGC = Profiler.GetTotalAllocatedMemoryLong();
+                    _lastMemoryAtGC = Profiler.GetMonoUsedSizeLong();
                     return true;
                 }
 
-                long currentMem = Profiler.GetTotalAllocatedMemoryLong();
+                long currentMem = Profiler.GetMonoUsedSizeLong();
                 if (_lastMemoryAtGC < 0) _lastMemoryAtGC = currentMem;
 
                 // Fix arithmetic inversion: Ratchet watermark downward when memory drops (e.g. after level purge)
@@ -138,8 +138,8 @@ namespace BelmontsCurseMasterOptimizer.Patches
                     _lastMemoryAtGC = currentMem;
                 }
 
-                // Safety valve: allow full GC if heap memory grew by > 512 MB from current watermark
-                if (currentMem - _lastMemoryAtGC > (512L << 20))
+                // Safety valve: allow full GC only if MANAGED heap grew by > 256 MB from current watermark
+                if (currentMem - _lastMemoryAtGC > (256L << 20))
                 {
                     _lastMemoryAtGC = currentMem;
                     return true;
@@ -169,16 +169,16 @@ namespace BelmontsCurseMasterOptimizer.Patches
             {
                 if (IsInTrueLoadingScreen())
                 {
-                    _lastMemoryAtGC = Profiler.GetTotalAllocatedMemoryLong();
+                    _lastMemoryAtGC = Profiler.GetMonoUsedSizeLong();
                     return true;
                 }
 
-                long currentMem = Profiler.GetTotalAllocatedMemoryLong();
+                long currentMem = Profiler.GetMonoUsedSizeLong();
                 if (_lastMemoryAtGC < 0) _lastMemoryAtGC = currentMem;
                 if (currentMem < _lastMemoryAtGC) _lastMemoryAtGC = currentMem;
 
-                // Safety valve parity: allow full GC if heap memory grew by > 512 MB
-                if (currentMem - _lastMemoryAtGC > (512L << 20))
+                // Safety valve parity: allow full GC if managed heap grew by > 256 MB
+                if (currentMem - _lastMemoryAtGC > (256L << 20))
                 {
                     _lastMemoryAtGC = currentMem;
                     return true;
