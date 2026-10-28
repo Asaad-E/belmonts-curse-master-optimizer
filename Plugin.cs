@@ -10,7 +10,7 @@ using BelmontsCurseMasterOptimizer.UI;
 
 namespace BelmontsCurseMasterOptimizer
 {
-    [BepInPlugin("belmontscurse.masteroptimizer", "Belmont's Curse Master Optimizer", "1.1.0")]
+    [BepInPlugin("belmontscurse.masteroptimizer", "Belmont's Curse Master Optimizer", "1.2.0")]
     public class Plugin : BasePlugin
     {
         public const string Guid = "belmontscurse.masteroptimizer";
