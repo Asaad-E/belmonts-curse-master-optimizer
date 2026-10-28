@@ -33,20 +33,6 @@ namespace BelmontsCurseMasterOptimizer.Patches
             }
         }
 
-        [HarmonyPatch(typeof(PlanarReflectionRenderer), "OnDisable")]
-        [HarmonyPostfix]
-        public static void AfterDisable(PlanarReflectionRenderer __instance)
-        {
-            try
-            {
-                if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
-                {
-                    _configuredInstanceIds.Remove(((UnityEngine.Object)__instance).GetInstanceID());
-                }
-            }
-            catch {}
-        }
-
         [HarmonyPatch(typeof(PlanarReflectionRenderer), "OnDestroy")]
         [HarmonyPostfix]
         public static void AfterDestroy(PlanarReflectionRenderer __instance)
