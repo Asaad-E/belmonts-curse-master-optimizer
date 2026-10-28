@@ -10,7 +10,7 @@ using BelmontsCurseMasterOptimizer.UI;
 
 namespace BelmontsCurseMasterOptimizer
 {
-    [BepInPlugin("belmontscurse.masteroptimizer", "Belmont's Curse Master Optimizer", "1.0.0")]
+    [BepInPlugin("belmontscurse.masteroptimizer", "Belmont's Curse Master Optimizer", "1.1.0")]
     public class Plugin : BasePlugin
     {
         public const string Guid = "belmontscurse.masteroptimizer";
@@ -133,7 +133,7 @@ namespace BelmontsCurseMasterOptimizer
             SafePatch(typeof(VideoOptionPatches), "VideoOptionPatches");
 
             Config.Save();
-            L.LogInfo("Belmont's Curse Master Optimizer v1.0.0 successfully loaded!");
+            L.LogInfo("Belmont's Curse Master Optimizer v1.1.0 successfully loaded!");
         }
     }
 }

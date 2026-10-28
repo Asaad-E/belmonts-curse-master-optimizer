@@ -59,17 +59,17 @@ namespace BelmontsCurseMasterOptimizer.UI
                 Title = "3D Resolution Scale",
                 Choices = new (string, string, int)[11]
                 {
-                    ("DeckFix_Scale_100", "100% (Native 800p)", 0),
-                    ("DeckFix_Scale_95", "95% (760p)", 1),
-                    ("DeckFix_Scale_90", "90% (720p)", 2),
-                    ("DeckFix_Scale_85", "85% (680p)", 3),
-                    ("DeckFix_Scale_80", "80% (640p)", 4),
-                    ("DeckFix_Scale_75", "75% (600p)", 5),
-                    ("DeckFix_Scale_70", "70% (560p)", 6),
-                    ("DeckFix_Scale_65", "65% (520p)", 7),
-                    ("DeckFix_Scale_60", "60% (480p)", 8),
-                    ("DeckFix_Scale_55", "55% (440p)", 9),
-                    ("DeckFix_Scale_50", "50% (400p)", 10)
+                    ("DeckFix_Scale_100", "100% (Native)", 0),
+                    ("DeckFix_Scale_95", "95%", 1),
+                    ("DeckFix_Scale_90", "90%", 2),
+                    ("DeckFix_Scale_85", "85%", 3),
+                    ("DeckFix_Scale_80", "80%", 4),
+                    ("DeckFix_Scale_75", "75%", 5),
+                    ("DeckFix_Scale_70", "70%", 6),
+                    ("DeckFix_Scale_65", "65%", 7),
+                    ("DeckFix_Scale_60", "60%", 8),
+                    ("DeckFix_Scale_55", "55%", 9),
+                    ("DeckFix_Scale_50", "50%", 10)
                 },
                 Default = () => (Plugin.RenderScaleConfig != null) ? Math.Clamp(Plugin.RenderScaleConfig.Value, 0, 10) : 0,
                 Apply = (int v) =>
@@ -201,11 +201,32 @@ namespace BelmontsCurseMasterOptimizer.UI
                             urp.renderScale = targetScale;
                         }
 
-                        // When scale is 1.0 (100%), use Auto; when scaled down, use FSR for high-quality reconstruction
-                        UpscalingFilterSelection targetFilter = (targetScale >= 0.999f) ? UpscalingFilterSelection.Auto : UpscalingFilterSelection.FSR;
-                        if (urp.upscalingFilter != targetFilter)
+                        // When scale is 1.0 (100%), use Auto; when scaled down, use FSR with RCAS edge sharpness
+                        if (targetScale < 0.999f)
                         {
-                            urp.upscalingFilter = targetFilter;
+                            if (urp.upscalingFilter != UpscalingFilterSelection.FSR)
+                            {
+                                urp.upscalingFilter = UpscalingFilterSelection.FSR;
+                            }
+                            if (!urp.fsrOverrideSharpness)
+                            {
+                                urp.fsrOverrideSharpness = true;
+                            }
+                            if (Mathf.Abs(urp.fsrSharpness - 0.90f) > 0.01f)
+                            {
+                                urp.fsrSharpness = 0.90f;
+                            }
+                        }
+                        else
+                        {
+                            if (urp.upscalingFilter != UpscalingFilterSelection.Auto)
+                            {
+                                urp.upscalingFilter = UpscalingFilterSelection.Auto;
+                            }
+                            if (urp.fsrOverrideSharpness)
+                            {
+                                urp.fsrOverrideSharpness = false;
+                            }
                         }
                         urp.useSRPBatcher = true;
                     }

@@ -22,7 +22,7 @@ While *Castlevania: Belmont's Curse* is an incredible retro-modern experience, t
 
 ### Instant, Zero-Lag Map Navigation
 - **The Problem:** Opening the map renders the entire 3D world behind it (dropping FPS), and closing the map freezes the game for ~2 seconds while unloading scene data.
-- **The Fix:** Freezes 3D scene rendering behind the map for a fluid 60 FPS map browsing experience, and caches the map in memory so closing it is instantaneous (<1 ms) with zero recovery lag.
+- **The Fix:** Caches map scenes in memory so opening and closing is instantaneous (<1 ms) with zero recovery lag, optimizes map render cameras, and preserves the native background blur without blue/black screen artifacts.
 
 ### Smooth 60 FPS Water Reflections
 - **The Problem:** Frame-skipping water reflections cause distracting jitter and sliding artifacts as the camera moves.
