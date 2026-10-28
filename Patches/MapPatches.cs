@@ -18,8 +18,8 @@ namespace BelmontsCurseMasterOptimizer.Patches
         private static Camera _savedCamera = null;
         private static int _savedWorldCullingMask = -1;
         private static bool _hasSavedWorldCullingMask = false;
-        private static CameraClearFlags _savedClearFlags;
-        private static Color _savedBgColor;
+        private static int _defaultWorldCullingMask = -1;
+
         private static UIMapManager _activeMapManager = null;
         private static UIMapLevelManager _activeLevelManager = null;
         private static GameMenuManager _activeGameMenuManager = null;
@@ -28,14 +28,19 @@ namespace BelmontsCurseMasterOptimizer.Patches
         {
             try
             {
-                // 1. Check UIMapManager
+                // 1. Check UIMapManager and its child containers
                 var mapMgr = _activeMapManager ?? UIMapManager.Get();
                 if ((UnityEngine.Object)(object)mapMgr != (UnityEngine.Object)null)
                 {
-                    var lvlMgr = mapMgr.levelManager;
+                    if ((UnityEngine.Object)(object)mapMgr.mapContainer != (UnityEngine.Object)null &&
+                        (mapMgr.mapContainer.isVisible || mapMgr.mapContainer.isShowing))
+                    {
+                        return true;
+                    }
+
+                    var lvlMgr = mapMgr.levelManager ?? _activeLevelManager;
                     if ((UnityEngine.Object)(object)lvlMgr != (UnityEngine.Object)null)
                     {
-                        if (lvlMgr.IsOpened() || lvlMgr.IsOpening()) return true;
                         if ((UnityEngine.Object)(object)lvlMgr.levelMapContainer != (UnityEngine.Object)null &&
                             (lvlMgr.levelMapContainer.isVisible || lvlMgr.levelMapContainer.isShowing))
                         {
@@ -46,22 +51,15 @@ namespace BelmontsCurseMasterOptimizer.Patches
                     var wrldMgr = mapMgr.worldManager;
                     if ((UnityEngine.Object)(object)wrldMgr != (UnityEngine.Object)null)
                     {
-                        if (wrldMgr.IsOpened() || wrldMgr.IsOpening()) return true;
                         if ((UnityEngine.Object)(object)wrldMgr.worldMapContainer != (UnityEngine.Object)null &&
                             (wrldMgr.worldMapContainer.isVisible || wrldMgr.worldMapContainer.isShowing))
                         {
                             return true;
                         }
                     }
-
-                    if ((UnityEngine.Object)(object)mapMgr.mapContainer != (UnityEngine.Object)null &&
-                        (mapMgr.mapContainer.isVisible || mapMgr.mapContainer.isShowing))
-                    {
-                        return true;
-                    }
                 }
 
-                // 2. Check GameMenuManager
+                // 2. Check GameMenuManager Map Tab
                 if ((UnityEngine.Object)(object)_activeGameMenuManager != (UnityEngine.Object)null && _activeGameMenuManager.IsShowing())
                 {
                     var mapTab = _activeGameMenuManager.mapTab;
@@ -88,12 +86,10 @@ namespace BelmontsCurseMasterOptimizer.Patches
                     _savedCamera = cam;
                     _savedWorldCullingMask = cam.cullingMask;
                     _hasSavedWorldCullingMask = true;
-                    _savedClearFlags = cam.clearFlags;
-                    _savedBgColor = cam.backgroundColor;
+                    _defaultWorldCullingMask = cam.cullingMask;
 
-                    cam.cullingMask = 0; // Freeze 3D scene rendering behind map UI
-                    cam.clearFlags = CameraClearFlags.SolidColor;
-                    cam.backgroundColor = Color.black;
+                    // Strictly cull 3D draw calls. NEVER touch clearFlags or backgroundColor!
+                    cam.cullingMask = 0;
                     IsMapOpen = true;
                     Plugin.L.LogDebug($"[Map] FreezeWorldCamera: 3D camera frozen (saved mask: {_savedWorldCullingMask})");
                 }
@@ -110,14 +106,12 @@ namespace BelmontsCurseMasterOptimizer.Patches
             {
                 int maskToRestore = (_hasSavedWorldCullingMask && _savedWorldCullingMask != 0) 
                     ? _savedWorldCullingMask 
-                    : (-1 & ~(1 << 5));
+                    : (_defaultWorldCullingMask > 0 ? _defaultWorldCullingMask : (-1 & ~(1 << 5)));
 
                 Camera saved = _savedCamera;
                 if ((UnityEngine.Object)(object)saved != (UnityEngine.Object)null)
                 {
                     saved.cullingMask = maskToRestore;
-                    saved.clearFlags = _savedClearFlags != 0 ? _savedClearFlags : CameraClearFlags.Skybox;
-                    saved.backgroundColor = _savedBgColor;
                     Plugin.L.LogDebug($"[Map] Restored saved camera cullingMask to {maskToRestore}");
                 }
 
@@ -126,8 +120,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 if ((UnityEngine.Object)(object)main != (UnityEngine.Object)null && main.cullingMask == 0)
                 {
                     main.cullingMask = maskToRestore;
-                    main.clearFlags = CameraClearFlags.Skybox;
-                    Plugin.L.LogDebug("[Map] Restored Camera.main cullingMask from stranded 0");
+                    Plugin.L.LogDebug($"[Map] Restored Camera.main cullingMask from stranded 0 to {maskToRestore}");
                 }
             }
             catch (Exception ex)
@@ -165,28 +158,19 @@ namespace BelmontsCurseMasterOptimizer.Patches
         {
             try
             {
-                bool active = IsMapActive();
-                if (active)
+                // Architectural Rule: A watchdog must NEVER freeze the camera.
+                // Its ONLY responsibility is rescuing Camera.main if stranded with cullingMask == 0 while map is closed.
+                if (!IsMapActive())
                 {
-                    if (!IsMapOpen)
+                    Camera cam = Camera.main;
+                    if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null && cam.cullingMask == 0)
                     {
-                        FreezeWorldCamera();
-                    }
-                }
-                else
-                {
-                    if (IsMapOpen)
-                    {
+                        Plugin.L.LogWarning("[Map] Watchdog detected stranded cullingMask == 0 while map inactive. Rescuing world camera!");
                         RestoreWorldCamera();
                     }
-                    else
+                    else if (IsMapOpen)
                     {
-                        Camera cam = Camera.main;
-                        if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null && cam.cullingMask == 0)
-                        {
-                            Plugin.L.LogWarning("[Map] Watchdog detected stranded cullingMask == 0. Recovering world camera!");
-                            RestoreWorldCamera();
-                        }
+                        RestoreWorldCamera();
                     }
                 }
             }
@@ -228,9 +212,11 @@ namespace BelmontsCurseMasterOptimizer.Patches
         public static void AfterGameMenuOpen(GameMenuManager __instance)
         {
             _activeGameMenuManager = __instance;
-            if (IsMapActive())
+            // Record default camera cullingMask if valid
+            Camera cam = Camera.main;
+            if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null && cam.cullingMask != 0)
             {
-                FreezeWorldCamera();
+                _defaultWorldCullingMask = cam.cullingMask;
             }
         }
 
@@ -297,6 +283,16 @@ namespace BelmontsCurseMasterOptimizer.Patches
             catch {}
         }
 
+        [HarmonyPatch(typeof(UIMapWorldManager), "TryCloseWorldMap")]
+        [HarmonyPostfix]
+        public static void AfterTryCloseWorldMap()
+        {
+            if (!IsMapActive())
+            {
+                RestoreWorldCamera();
+            }
+        }
+
         [HarmonyPatch(typeof(UIMapLevelManager), "ApplyRenderTexture")]
         [HarmonyPostfix]
         public static void AfterApplyLevelRenderTexture(UIMapLevelManager __instance, LevelMap levelMap)
@@ -333,20 +329,14 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPostfix]
         public static void AfterMapLevelDisable()
         {
-            if (!IsMapActive() && IsMapOpen)
-            {
-                RestoreWorldCamera();
-            }
+            RestoreWorldCamera();
         }
 
         [HarmonyPatch(typeof(UIMapLevelManager), "OnDestroy")]
         [HarmonyPostfix]
         public static void AfterMapLevelDestroy()
         {
-            if (IsMapOpen)
-            {
-                RestoreWorldCamera();
-            }
+            RestoreWorldCamera();
             _activeLevelManager = null;
             _activeMapManager = null;
         }
@@ -355,9 +345,11 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPostfix]
         public static void AfterRoomEnter()
         {
-            if (IsMapOpen || ((UnityEngine.Object)(object)Camera.main != (UnityEngine.Object)null && Camera.main.cullingMask == 0))
+            RestoreWorldCamera();
+            Camera cam = Camera.main;
+            if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null && cam.cullingMask != 0)
             {
-                RestoreWorldCamera();
+                _defaultWorldCullingMask = cam.cullingMask;
             }
         }
 
@@ -447,6 +439,27 @@ namespace BelmontsCurseMasterOptimizer.Patches
             {
                 Plugin.L.LogWarning("[Map] BeforeCloseCurrentMapInternal: " + ex.Message);
             }
+        }
+
+        [HarmonyPatch(typeof(UIMapLevelManager), "CloseLevelMap")]
+        [HarmonyPostfix]
+        public static void AfterCloseLevelMap()
+        {
+            RestoreWorldCamera();
+        }
+
+        [HarmonyPatch(typeof(UIMapLevelManager), "TryCloseLevelMap")]
+        [HarmonyPostfix]
+        public static void AfterTryCloseLevelMap()
+        {
+            RestoreWorldCamera();
+        }
+
+        [HarmonyPatch(typeof(UIMapLevelManager), "OnCloseLevelMapCompleted")]
+        [HarmonyPostfix]
+        public static void AfterCloseLevelMapCompleted()
+        {
+            RestoreWorldCamera();
         }
 
         // Purge cached Addressables map instances when changing levels to prevent unbounded memory accumulation
