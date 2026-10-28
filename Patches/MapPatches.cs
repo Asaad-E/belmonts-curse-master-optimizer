@@ -342,6 +342,8 @@ namespace BelmontsCurseMasterOptimizer.Patches
                         lvlMgr._currentMapObject = null;
                         lvlMgr._currentOpenMapSceneOperationLevel = null;
                         lvlMgr._currentSceneOpeningType = UIMapLevelManager.LevelMapSceneOpeningType.LoadScene;
+                        _activeLevelManager = null;
+                        _activeMapManager = null;
                         Plugin.L.LogInfo("[Map] Purged and unloaded stale _preLoadedMaps on level change.");
                     }
                 }
