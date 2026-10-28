@@ -55,6 +55,17 @@ namespace BelmontsCurseMasterOptimizer.Patches
             catch {}
         }
 
+        // Active per-frame incremental GC heartbeat called from VideoOptionsDriver.Update()
+        public static void IncrementalHeartbeat()
+        {
+            if (!StutterFixEnabled) return;
+            if (GarbageCollector.GCMode != GarbageCollector.Mode.Enabled) return;
+
+            // Grant an active 1.0 ms slice per frame during normal gameplay
+            // Prevents Gen0/1 memory from out-allocating the collector during intense combat
+            GarbageCollector.CollectIncremental(1000000uL);
+        }
+
         [HarmonyPatch(typeof(RoomManagerSystem), "RoomChangeTask")]
         [HarmonyPrefix]
         public static void BeforeRoomChange()
@@ -91,8 +102,8 @@ namespace BelmontsCurseMasterOptimizer.Patches
 
             try
             {
-                // Safety valve: allow full blocking GC during actual loading screens
-                if (IsInTrueLoadingScreen())
+                // Safety valve: allow full blocking GC during actual loading screens or room changes
+                if (IsInTrueLoadingScreen() || _inRoomChange)
                 {
                     return true;
                 }
@@ -100,7 +111,13 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 long currentMem = Profiler.GetTotalAllocatedMemoryLong();
                 if (_lastMemoryAtGC < 0) _lastMemoryAtGC = currentMem;
 
-                // Safety valve: allow full GC if heap memory grew by > 512 MB
+                // Fix arithmetic inversion: Ratchet watermark downward when memory drops (e.g. after level purge)
+                if (currentMem < _lastMemoryAtGC)
+                {
+                    _lastMemoryAtGC = currentMem;
+                }
+
+                // Safety valve: allow full GC if heap memory grew by > 512 MB from current watermark
                 if (currentMem - _lastMemoryAtGC > (512L << 20))
                 {
                     _lastMemoryAtGC = currentMem;
@@ -126,7 +143,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
 
             try
             {
-                if (IsInTrueLoadingScreen())
+                if (IsInTrueLoadingScreen() || _inRoomChange)
                 {
                     return true;
                 }
