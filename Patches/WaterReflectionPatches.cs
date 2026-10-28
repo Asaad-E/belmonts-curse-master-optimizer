@@ -20,9 +20,16 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPostfix]
         public static void AfterEnable(PlanarReflectionRenderer __instance)
         {
-            if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
+            try
             {
-                ConfigureRendererInstance(__instance);
+                if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
+                {
+                    ConfigureRendererInstance(__instance);
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.L.LogWarning("[WaterReflection] AfterEnable exception: " + ex.Message);
             }
         }
 
@@ -30,33 +37,48 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPostfix]
         public static void AfterDisable(PlanarReflectionRenderer __instance)
         {
-            if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
+            try
             {
-                _configuredInstanceIds.Remove(((UnityEngine.Object)__instance).GetInstanceID());
+                if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
+                {
+                    _configuredInstanceIds.Remove(((UnityEngine.Object)__instance).GetInstanceID());
+                }
             }
+            catch {}
         }
 
         [HarmonyPatch(typeof(PlanarReflectionRenderer), "OnDestroy")]
         [HarmonyPostfix]
         public static void AfterDestroy(PlanarReflectionRenderer __instance)
         {
-            if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
+            try
             {
-                _configuredInstanceIds.Remove(((UnityEngine.Object)__instance).GetInstanceID());
+                if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
+                {
+                    _configuredInstanceIds.Remove(((UnityEngine.Object)__instance).GetInstanceID());
+                }
             }
+            catch {}
         }
 
         [HarmonyPatch(typeof(PlanarReflectionRenderer), "OnQualityChanged")]
         [HarmonyPostfix]
         public static void AfterQualityChanged(PlanarReflectionRenderer __instance)
         {
-            if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
+            try
             {
-                _configuredInstanceIds.Remove(((UnityEngine.Object)__instance).GetInstanceID());
-                if (ReflectionMode != 2)
+                if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
                 {
-                    ConfigureRendererInstance(__instance);
+                    _configuredInstanceIds.Remove(((UnityEngine.Object)__instance).GetInstanceID());
+                    if (ReflectionMode != 2)
+                    {
+                        ConfigureRendererInstance(__instance);
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                Plugin.L.LogWarning("[WaterReflection] AfterQualityChanged exception: " + ex.Message);
             }
         }
 
@@ -83,13 +105,13 @@ namespace BelmontsCurseMasterOptimizer.Patches
 
         private static void ConfigureRendererInstance(PlanarReflectionRenderer renderer)
         {
-            if ((UnityEngine.Object)(object)renderer == (UnityEngine.Object)null) return;
-
-            int id = ((UnityEngine.Object)renderer).GetInstanceID();
-            _configuredInstanceIds.Add(id);
-
             try
             {
+                if ((UnityEngine.Object)(object)renderer == (UnityEngine.Object)null) return;
+
+                int id = ((UnityEngine.Object)renderer).GetInstanceID();
+                _configuredInstanceIds.Add(id);
+
                 var settings = renderer._settings;
                 if (settings != null)
                 {
@@ -122,30 +144,38 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPrefix]
         public static bool BeforeRenderURPReflection(PlanarReflectionRenderer __instance, ScriptableRenderContext context, Camera cam)
         {
-            // If the Map is open, skip reflection passes entirely to save GPU & CPU culling
-            if (MapPatches.IsMapOpen || ReflectionMode == 2)
+            try
             {
-                return false;
-            }
-
-            // CRITICAL: Ensure renderer is configured BEFORE the frame-skip check!
-            if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
-            {
-                int id = ((UnityEngine.Object)__instance).GetInstanceID();
-                if (!_configuredInstanceIds.Contains(id))
+                // If the Map is open, skip reflection passes entirely to save GPU & CPU culling
+                if (MapPatches.IsMapOpen || ReflectionMode == 2)
                 {
-                    ConfigureRendererInstance(__instance);
+                    return false;
                 }
-            }
 
-            if (ReflectionMode == 1)
+                // CRITICAL: Ensure renderer is configured BEFORE the frame-skip check!
+                if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
+                {
+                    int id = ((UnityEngine.Object)__instance).GetInstanceID();
+                    if (!_configuredInstanceIds.Contains(id))
+                    {
+                        ConfigureRendererInstance(__instance);
+                    }
+                }
+
+                if (ReflectionMode == 1)
+                {
+                    // Frame-skip: Render every 2nd frame
+                    return (Time.frameCount % 2 == 0);
+                }
+
+                // Render smoothly every frame
+                return true;
+            }
+            catch (Exception ex)
             {
-                // Frame-skip: Render every 2nd frame
-                return (Time.frameCount % 2 == 0);
+                Plugin.L.LogWarning("[WaterReflection] BeforeRenderURPReflection exception: " + ex.Message);
+                return true; // Fail-safe: allow default rendering rather than crashing URP
             }
-
-            // Render smoothly every frame
-            return true;
         }
     }
 }

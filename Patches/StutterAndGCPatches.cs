@@ -72,14 +72,22 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPrefix]
         public static void BeforeRoomChange()
         {
-            _inRoomChange = true;
+            try
+            {
+                _inRoomChange = true;
+            }
+            catch {}
         }
 
         [HarmonyPatch(typeof(RoomManagerSystem), "OnEnterRoom")]
         [HarmonyPostfix]
         public static void AfterEnterRoom()
         {
-            _inRoomChange = false;
+            try
+            {
+                _inRoomChange = false;
+            }
+            catch {}
         }
 
         private static bool IsInTrueLoadingScreen()
@@ -165,6 +173,17 @@ namespace BelmontsCurseMasterOptimizer.Patches
                     return true;
                 }
 
+                long currentMem = Profiler.GetTotalAllocatedMemoryLong();
+                if (_lastMemoryAtGC < 0) _lastMemoryAtGC = currentMem;
+                if (currentMem < _lastMemoryAtGC) _lastMemoryAtGC = currentMem;
+
+                // Safety valve parity: allow full GC if heap memory grew by > 512 MB
+                if (currentMem - _lastMemoryAtGC > (512L << 20))
+                {
+                    _lastMemoryAtGC = currentMem;
+                    return true;
+                }
+
                 if (GarbageCollector.isIncremental)
                 {
                     GarbageCollector.CollectIncremental(IncrementalKickNs);
@@ -187,53 +206,66 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 return true;
             }
 
-            long totalMem = Profiler.GetTotalAllocatedMemoryLong();
-            if (_memoryAtUnload < 0)
+            try
             {
-                _memoryAtUnload = totalMem;
-            }
+                long totalMem = Profiler.GetTotalAllocatedMemoryLong();
+                if (_memoryAtUnload < 0)
+                {
+                    _memoryAtUnload = totalMem;
+                }
 
-            // Ratchet watermark downward when memory drops after biome unloads
-            if (totalMem < _memoryAtUnload)
-            {
-                _memoryAtUnload = totalMem;
-            }
+                // Ratchet watermark downward when memory drops after biome unloads
+                if (totalMem < _memoryAtUnload)
+                {
+                    _memoryAtUnload = totalMem;
+                }
 
-            // Always allow unload during true loading screens or death recovery
-            if (IsInTrueLoadingScreen())
-            {
+                // Always allow unload during true loading screens or death recovery
+                if (IsInTrueLoadingScreen())
+                {
+                    _memoryAtUnload = totalMem;
+                    return true;
+                }
+
+                if (!_inRoomChange)
+                {
+                    return true;
+                }
+
+                long growthMB = (totalMem - _memoryAtUnload) >> 20;
+
+                // Only run if memory grew by > 512 MB or every 4th room
+                if (growthMB < 512 && ++_roomsSinceUnload < 4)
+                {
+                    __state = true;
+                    __result = (AsyncOperation)(object)Resources.LoadAsync("stutterfix/skipped_unload");
+                    return false; // Skip the 300 ms asset unload hitch
+                }
+
+                _roomsSinceUnload = 0;
                 _memoryAtUnload = totalMem;
                 return true;
             }
-
-            if (!_inRoomChange)
+            catch (System.Exception ex)
             {
-                return true;
+                Plugin.L.LogWarning("[StutterFix] BeforeUnload exception: " + ex.Message);
+                __state = false;
+                return true; // Fail-safe: allow engine unload to proceed
             }
-
-            long growthMB = (totalMem - _memoryAtUnload) >> 20;
-
-            // Only run if memory grew by > 512 MB or every 4th room
-            if (growthMB < 512 && ++_roomsSinceUnload < 4)
-            {
-                __state = true;
-                __result = (AsyncOperation)(object)Resources.LoadAsync("stutterfix/skipped_unload");
-                return false; // Skip the 300 ms asset unload hitch
-            }
-
-            _roomsSinceUnload = 0;
-            _memoryAtUnload = totalMem;
-            return true;
         }
 
         [HarmonyPatch(typeof(Resources), "UnloadUnusedAssets")]
         [HarmonyPostfix]
         public static void AfterUnload(bool __state)
         {
-            if (!__state)
+            try
             {
-                _roomsSinceUnload = 0;
+                if (!__state)
+                {
+                    _roomsSinceUnload = 0;
+                }
             }
+            catch {}
         }
     }
 }

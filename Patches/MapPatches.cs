@@ -16,6 +16,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
 
         private static Camera _savedCamera = null;
         private static int _savedWorldCullingMask = -1;
+        private static bool _hasSavedWorldCullingMask = false;
         private static CameraClearFlags _savedClearFlags;
         private static Color _savedBgColor;
         private static UIMapManager _activeMapManager = null;
@@ -71,6 +72,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 {
                     _savedCamera = cam;
                     _savedWorldCullingMask = cam.cullingMask;
+                    _hasSavedWorldCullingMask = true;
                     _savedClearFlags = cam.clearFlags;
                     _savedBgColor = cam.backgroundColor;
 
@@ -130,7 +132,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
         {
             try
             {
-                int maskToRestore = (_savedWorldCullingMask > 0) ? _savedWorldCullingMask : (-1 & ~(1 << 5));
+                int maskToRestore = (_hasSavedWorldCullingMask && _savedWorldCullingMask != 0) ? _savedWorldCullingMask : (-1 & ~(1 << 5));
                 Camera cam = ((UnityEngine.Object)(object)_savedCamera != (UnityEngine.Object)null) ? _savedCamera : Camera.main;
 
                 if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null)
@@ -155,6 +157,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 IsMapOpen = false;
                 _savedCamera = null;
                 _savedWorldCullingMask = -1;
+                _hasSavedWorldCullingMask = false;
             }
         }
 
@@ -278,8 +281,15 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPrefix]
         public static void BeforeLevelUnload()
         {
-            RestoreWorldCamera();
-            PurgeMapCache();
+            try
+            {
+                RestoreWorldCamera();
+                PurgeMapCache();
+            }
+            catch (Exception ex)
+            {
+                Plugin.L.LogWarning("[Map] BeforeLevelUnload exception: " + ex.Message);
+            }
         }
 
         public static void PurgeMapCache()
