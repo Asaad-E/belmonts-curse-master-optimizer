@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using HarmonyLib;
-using Il2CppInterop.Runtime.InteropTypes;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -15,21 +14,70 @@ namespace BelmontsCurseMasterOptimizer.Patches
         // 2 = Off
         public static int ReflectionMode = 0;
 
-        private static readonly HashSet<IntPtr> _configuredRenderers = new HashSet<IntPtr>();
+        private static readonly HashSet<int> _configuredInstanceIds = new HashSet<int>();
+
+        [HarmonyPatch(typeof(PlanarReflectionRenderer), "OnEnable")]
+        [HarmonyPostfix]
+        public static void AfterEnable(PlanarReflectionRenderer __instance)
+        {
+            ConfigureRendererInstance(__instance);
+        }
+
+        [HarmonyPatch(typeof(PlanarReflectionRenderer), "OnDestroy")]
+        [HarmonyPostfix]
+        public static void AfterDestroy(PlanarReflectionRenderer __instance)
+        {
+            if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
+            {
+                _configuredInstanceIds.Remove(((UnityEngine.Object)__instance).GetInstanceID());
+            }
+        }
+
+        private static void ConfigureRendererInstance(PlanarReflectionRenderer renderer)
+        {
+            if ((UnityEngine.Object)(object)renderer == (UnityEngine.Object)null) return;
+
+            int id = ((UnityEngine.Object)renderer).GetInstanceID();
+            if (_configuredInstanceIds.Contains(id)) return;
+
+            try
+            {
+                var settings = renderer._settings;
+                if (settings != null)
+                {
+                    // Strip shadow maps from reflection camera pass (saves hundreds of shadow draw calls)
+                    settings.renderShadows = false;
+                    // Strip post-processing bloom/color grading from reflection camera
+                    settings.usePostFX = false;
+
+                    // Downscale reflection texture resolution to save fillrate & vertex shader cost
+                    var res = settings.resolutionByQuality;
+                    if (res != null)
+                    {
+                        res.lowResolutionMultiplier = 0.25f;
+                        res.midResolutionMultiplier = 0.35f;
+                        res.highResolutionMultiplier = 0.50f;
+                    }
+
+                    // Apply safely outside the active URP render loop
+                    renderer.ApplySettings();
+                    _configuredInstanceIds.Add(id);
+                    Plugin.L.LogInfo($"[WaterReflection] Configured planar reflection renderer instance #{id} with 60 FPS settings.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.L.LogWarning("[WaterReflection] Error applying settings: " + ex.Message);
+            }
+        }
 
         [HarmonyPatch(typeof(PlanarReflectionRenderer), "RenderURPReflection")]
         [HarmonyPrefix]
         public static bool BeforeRenderURPReflection(PlanarReflectionRenderer __instance, ScriptableRenderContext context, Camera cam)
         {
             // If the Map is open, skip reflection passes entirely to save GPU & CPU culling
-            if (MapPatches.IsMapOpen)
+            if (MapPatches.IsMapOpen || ReflectionMode == 2)
             {
-                return false;
-            }
-
-            if (ReflectionMode == 2)
-            {
-                // Reflections turned Off
                 return false;
             }
 
@@ -40,54 +88,18 @@ namespace BelmontsCurseMasterOptimizer.Patches
             }
 
             // Mode 0: Optimized Every Frame
+            // Fallback initialization if OnEnable was bypassed
             if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
             {
-                IntPtr ptr = ((Il2CppObjectBase)__instance).Pointer;
-                if (!_configuredRenderers.Contains(ptr))
+                int id = ((UnityEngine.Object)__instance).GetInstanceID();
+                if (!_configuredInstanceIds.Contains(id))
                 {
-                    try
-                    {
-                        var settings = __instance._settings;
-                        if (settings != null)
-                        {
-                            // Strip shadow maps from reflection camera pass (saves hundreds of shadow draw calls)
-                            settings.renderShadows = false;
-                            // Strip post-processing bloom/color grading from reflection camera
-                            settings.usePostFX = false;
-
-                            // Downscale reflection texture resolution to save fillrate & vertex shader cost
-                            var res = settings.resolutionByQuality;
-                            if (res != null)
-                            {
-                                res.lowResolutionMultiplier = 0.25f;
-                                res.midResolutionMultiplier = 0.35f;
-                                res.highResolutionMultiplier = 0.50f;
-                            }
-
-                            __instance.ApplySettings();
-                            _configuredRenderers.Add(ptr);
-                            Plugin.L.LogInfo("[WaterReflection] Applied optimized 60 FPS settings on PlanarReflectionRenderer instance.");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Plugin.L.LogWarning("[WaterReflection] Error applying settings: " + ex.Message);
-                    }
+                    ConfigureRendererInstance(__instance);
                 }
             }
 
             // Render smoothly every frame
             return true;
-        }
-
-        [HarmonyPatch(typeof(PlanarReflectionRenderer), "OnEnable")]
-        [HarmonyPostfix]
-        public static void AfterEnable(PlanarReflectionRenderer __instance)
-        {
-            if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
-            {
-                _configuredRenderers.Remove(((Il2CppObjectBase)__instance).Pointer);
-            }
         }
     }
 }
