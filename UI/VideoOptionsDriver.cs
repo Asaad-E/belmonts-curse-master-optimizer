@@ -3,6 +3,8 @@ using Il2CppInterop.Runtime;
 using Il2CppInterop.Runtime.InteropTypes;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 using BelmontsCurseMasterOptimizer.Patches;
 
@@ -19,18 +21,42 @@ namespace BelmontsCurseMasterOptimizer.UI
 
         private void Update()
         {
-            // Update zoom optimization every frame
+            // 1. Dynamic Zoom Optimization
             CameraZoomPatches.UpdateZoomOptimization();
 
-            // Periodic engine maintenance every 1 second:
-            // Ensures upload buffer, SRP batcher, and renderScale (native 1.0 on Med/High) remain locked
+            // 2. Map Screen Black-Screen Watchdog
+            MapPatches.FailsafeCameraWatchdog();
+
+            // 3. Active Incremental GC Heartbeat
+            StutterAndGCPatches.IncrementalHeartbeat();
+
+            // 4. Zero-Latency RenderScale Lock: Guarantee text sharpness every frame on Med/High
+            var pipe = GraphicsSettings.currentRenderPipeline;
+            if (pipe != null)
+            {
+                var urp = pipe.TryCast<UniversalRenderPipelineAsset>();
+                if (urp != null)
+                {
+                    int quality = QualitySettings.GetQualityLevel();
+                    float targetScale = (quality >= 1) ? 1.0f : 0.85f;
+                    if (Mathf.Abs(urp.renderScale - targetScale) > 0.001f)
+                    {
+                        urp.renderScale = targetScale;
+                        if (quality >= 1)
+                        {
+                            urp.upscalingFilter = UpscalingFilterSelection.Auto;
+                        }
+                    }
+                }
+            }
+
+            // 5. Periodic engine maintenance every 1 second: upload buffer and SRP batcher
             tweakTimer -= Time.unscaledDeltaTime;
             if (tweakTimer <= 0f)
             {
                 tweakTimer = 1.0f;
                 StutterAndGCPatches.ApplyEngineTweaks();
                 CullingAndCPUPatches.EnsureSRPBatcher();
-                VideoOptions.EnforceRenderScale(QualitySettings.GetQualityLevel());
             }
 
             if (!VideoOptions.Registered)
