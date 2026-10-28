@@ -67,6 +67,7 @@ namespace BelmontsCurseMasterOptimizer.UI
                 Apply = (int v) =>
                 {
                     WaterReflectionPatches.ReflectionMode = Math.Clamp(v, 0, 2);
+                    WaterReflectionPatches.ReapplyAllWaterSettings();
                     if (Plugin.ReflectionModeConfig != null) Plugin.ReflectionModeConfig.Value = WaterReflectionPatches.ReflectionMode;
                     Plugin.Instance?.Config.Save();
                 }
