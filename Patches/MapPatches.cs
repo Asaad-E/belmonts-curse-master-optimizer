@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
+using Doozy.Runtime.UIManager.Containers;
 using HarmonyLib;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Il2CppInterop.Runtime.InteropTypes;
 
 namespace BelmontsCurseMasterOptimizer.Patches
@@ -13,36 +16,74 @@ namespace BelmontsCurseMasterOptimizer.Patches
 
         private static Camera _savedCamera = null;
         private static int _savedWorldCullingMask = -1;
+        private static CameraClearFlags _savedClearFlags;
+        private static Color _savedBgColor;
+        private static UIMapManager _activeMapManager = null;
+        private static UIMapLevelManager _activeLevelManager = null;
 
-        [HarmonyPatch(typeof(UIMapManager), "OpenMap")]
-        [HarmonyPrefix]
-        public static void BeforeOpenMap(UIMapManager __instance)
+        private static bool IsMapUIActive(UIMapManager mgr)
         {
-            if (!FastMapEnabled) return;
-            if (IsMapOpen) return; // Re-entrancy guard
+            if ((UnityEngine.Object)(object)mgr == (UnityEngine.Object)null) return false;
 
             try
             {
-                Camera cam = Camera.main;
-                if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null)
+                UIMapLevelManager lvlMgr = mgr.levelManager;
+                if ((UnityEngine.Object)(object)lvlMgr != (UnityEngine.Object)null)
                 {
-                    // Guard against capturing an invalid or already-zeroed culling mask
-                    int currentMask = cam.cullingMask;
-                    if (currentMask == 0)
+                    if (lvlMgr.IsOpened() || lvlMgr.IsOpening()) return true;
+                    if ((UnityEngine.Object)(object)lvlMgr.levelMapContainer != (UnityEngine.Object)null &&
+                        (lvlMgr.levelMapContainer.isVisible || lvlMgr.levelMapContainer.isShowing))
                     {
-                        currentMask = -1 & ~(1 << 5); // Default: Everything except UI layer (5)
+                        return true;
                     }
+                }
 
+                if ((UnityEngine.Object)(object)mgr.mapContainer != (UnityEngine.Object)null &&
+                    (mgr.mapContainer.isVisible || mgr.mapContainer.isShowing))
+                {
+                    return true;
+                }
+            }
+            catch {}
+            return false;
+        }
+
+        [HarmonyPatch(typeof(UIMapManager), "OpenMap")]
+        [HarmonyPostfix]
+        public static void AfterOpenMap(UIMapManager __instance)
+        {
+            if (!FastMapEnabled) return;
+
+            try
+            {
+                _activeMapManager = __instance;
+                if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null &&
+                    (UnityEngine.Object)(object)__instance.levelManager != (UnityEngine.Object)null)
+                {
+                    _activeLevelManager = __instance.levelManager;
+                }
+
+                // Guard against premature culling if OpenMap early-returned without showing map
+                if (IsMapOpen || !IsMapUIActive(__instance)) return;
+
+                Camera cam = Camera.main;
+                if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null && cam.cullingMask != 0)
+                {
                     _savedCamera = cam;
-                    _savedWorldCullingMask = currentMask;
+                    _savedWorldCullingMask = cam.cullingMask;
+                    _savedClearFlags = cam.clearFlags;
+                    _savedBgColor = cam.backgroundColor;
+
                     cam.cullingMask = 0; // Freeze 3D scene rendering behind map UI
+                    cam.clearFlags = CameraClearFlags.SolidColor;
+                    cam.backgroundColor = Color.black;
                     IsMapOpen = true;
-                    Plugin.L.LogDebug($"[Map] World camera cullingMask set to 0 (saved: {_savedWorldCullingMask})");
+                    Plugin.L.LogDebug($"[Map] AfterOpenMap: 3D camera frozen (saved mask: {_savedWorldCullingMask})");
                 }
             }
             catch (Exception ex)
             {
-                Plugin.L.LogWarning("[Map] BeforeOpenMap exception: " + ex.Message);
+                Plugin.L.LogWarning("[Map] AfterOpenMap error: " + ex.Message);
             }
         }
 
@@ -53,27 +94,56 @@ namespace BelmontsCurseMasterOptimizer.Patches
             RestoreWorldCamera();
         }
 
+        [HarmonyPatch(typeof(UIMapLevelManager), "OnDisable")]
+        [HarmonyPostfix]
+        public static void AfterMapLevelDisable()
+        {
+            if (IsMapOpen)
+            {
+                RestoreWorldCamera();
+            }
+        }
+
+        [HarmonyPatch(typeof(UIMapLevelManager), "OnDestroy")]
+        [HarmonyPostfix]
+        public static void AfterMapLevelDestroy()
+        {
+            if (IsMapOpen)
+            {
+                RestoreWorldCamera();
+            }
+            _activeLevelManager = null;
+            _activeMapManager = null;
+        }
+
+        [HarmonyPatch(typeof(RoomManager.RoomManagerSystem), "OnEnterRoom")]
+        [HarmonyPostfix]
+        public static void AfterRoomEnter()
+        {
+            if (IsMapOpen || ((UnityEngine.Object)(object)Camera.main != (UnityEngine.Object)null && Camera.main.cullingMask == 0))
+            {
+                RestoreWorldCamera();
+            }
+        }
+
         public static void RestoreWorldCamera()
         {
-            if (!IsMapOpen && _savedWorldCullingMask == -1) return;
-
             try
             {
                 int maskToRestore = (_savedWorldCullingMask > 0) ? _savedWorldCullingMask : (-1 & ~(1 << 5));
+                Camera cam = ((UnityEngine.Object)(object)_savedCamera != (UnityEngine.Object)null) ? _savedCamera : Camera.main;
 
-                if ((UnityEngine.Object)(object)_savedCamera != (UnityEngine.Object)null)
+                if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null)
                 {
-                    _savedCamera.cullingMask = maskToRestore;
-                    Plugin.L.LogDebug($"[Map] Restored saved camera cullingMask to {maskToRestore}");
+                    cam.cullingMask = maskToRestore;
+                    cam.clearFlags = _savedClearFlags != 0 ? _savedClearFlags : CameraClearFlags.Skybox;
+                    cam.backgroundColor = _savedBgColor;
+                    Plugin.L.LogDebug($"[Map] Restored world camera cullingMask to {maskToRestore}");
                 }
-                else
+                else if ((UnityEngine.Object)(object)Camera.main != (UnityEngine.Object)null && Camera.main.cullingMask == 0)
                 {
-                    Camera cam = Camera.main;
-                    if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null)
-                    {
-                        cam.cullingMask = maskToRestore;
-                        Plugin.L.LogDebug($"[Map] Restored Camera.main cullingMask to {maskToRestore}");
-                    }
+                    Camera.main.cullingMask = -1 & ~(1 << 5);
+                    Camera.main.clearFlags = CameraClearFlags.Skybox;
                 }
             }
             catch (Exception ex)
@@ -91,15 +161,28 @@ namespace BelmontsCurseMasterOptimizer.Patches
         // Failsafe watchdog called from VideoOptionsDriver.Update() every frame
         public static void FailsafeCameraWatchdog()
         {
-            if (!IsMapOpen)
+            try
             {
-                Camera cam = Camera.main;
-                if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null && cam.cullingMask == 0)
+                if (IsMapOpen)
                 {
-                    Plugin.L.LogWarning("[Map] Watchdog detected stranded cullingMask == 0. Recovering world camera!");
-                    cam.cullingMask = -1 & ~(1 << 5);
+                    // If map is flagged open but UI containers are actually inactive (e.g. death or cutscene bypass), recover!
+                    if (!IsMapUIActive(_activeMapManager))
+                    {
+                        Plugin.L.LogWarning("[Map] Watchdog detected inactive UI while IsMapOpen=true. Recovering camera!");
+                        RestoreWorldCamera();
+                    }
+                }
+                else
+                {
+                    Camera cam = Camera.main;
+                    if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null && cam.cullingMask == 0)
+                    {
+                        Plugin.L.LogWarning("[Map] Watchdog detected stranded cullingMask == 0. Recovering world camera!");
+                        RestoreWorldCamera();
+                    }
                 }
             }
+            catch {}
         }
 
         [HarmonyPatch(typeof(UIMapLevelManager), "OnLoadLevelMapCompleted")]
@@ -110,6 +193,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
 
             try
             {
+                _activeLevelManager = __instance;
                 if (__instance._preLoadedMaps == null)
                 {
                     __instance._preLoadedMaps = new Il2CppSystem.Collections.Generic.Dictionary<LevelID, LevelMap>();
@@ -118,8 +202,12 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 if ((UnityEngine.Object)(object)__instance._currentMapObject != (UnityEngine.Object)null &&
                     (UnityEngine.Object)(object)__instance._currentOpenMapSceneOperationLevel != (UnityEngine.Object)null)
                 {
-                    __instance._preLoadedMaps[__instance._currentOpenMapSceneOperationLevel] = __instance._currentMapObject;
-                    Plugin.L.LogInfo("[Map] Cached LevelMap in _preLoadedMaps for " + ((UnityEngine.Object)__instance._currentOpenMapSceneOperationLevel).name);
+                    LevelID targetLevel = __instance._currentOpenMapSceneOperationLevel;
+                    if (!__instance._preLoadedMaps.ContainsKey(targetLevel))
+                    {
+                        __instance._preLoadedMaps[targetLevel] = __instance._currentMapObject;
+                        Plugin.L.LogInfo("[Map] Cached LevelMap in _preLoadedMaps for " + ((UnityEngine.Object)targetLevel).name);
+                    }
                 }
             }
             catch (Exception ex)
@@ -136,16 +224,18 @@ namespace BelmontsCurseMasterOptimizer.Patches
 
             try
             {
+                _activeLevelManager = __instance;
                 if (__instance._preLoadedMaps != null && (UnityEngine.Object)(object)targetLevel != (UnityEngine.Object)null)
                 {
                     if (__instance._preLoadedMaps.ContainsKey(targetLevel))
                     {
                         LevelMap map = __instance._preLoadedMaps[targetLevel];
-                        if ((UnityEngine.Object)(object)map != (UnityEngine.Object)null)
+                        if ((UnityEngine.Object)(object)map != (UnityEngine.Object)null &&
+                            (UnityEngine.Object)(object)((Component)map).gameObject != (UnityEngine.Object)null)
                         {
                             __result = UIMapLevelManager.LevelMapSceneOpeningType.ActivatePreLoaded;
                             Plugin.L.LogDebug("[Map] Opening preloaded LevelMap for " + ((UnityEngine.Object)targetLevel).name);
-                            return false; // Skip original
+                            return false; // Skip original load
                         }
                     }
                 }
@@ -167,15 +257,14 @@ namespace BelmontsCurseMasterOptimizer.Patches
 
             try
             {
-                // If map is cached, switch to ActivatePreLoaded so the engine calls DeactivateCurrentPreLoadedMap()
-                // instead of UnloadCurrentMapScene() (which triggers the 2-second freeze)
+                _activeLevelManager = __instance;
                 if (__instance._preLoadedMaps != null &&
                     (UnityEngine.Object)(object)__instance._currentOpenMapSceneOperationLevel != (UnityEngine.Object)null &&
                     __instance._preLoadedMaps.ContainsKey(__instance._currentOpenMapSceneOperationLevel) &&
                     (UnityEngine.Object)(object)__instance._preLoadedMaps[__instance._currentOpenMapSceneOperationLevel] != (UnityEngine.Object)null)
                 {
                     __instance._currentSceneOpeningType = UIMapLevelManager.LevelMapSceneOpeningType.ActivatePreLoaded;
-                    Plugin.L.LogDebug("[Map] Switched close operation to ActivatePreLoaded (skipping UnloadSceneAsync)");
+                    Plugin.L.LogDebug("[Map] Switched close operation to ActivatePreLoaded (instant <1ms closure)");
                 }
             }
             catch (Exception ex)
@@ -197,15 +286,43 @@ namespace BelmontsCurseMasterOptimizer.Patches
         {
             try
             {
-                UIMapManager mapMgr = UIMapManager.Get();
-                if ((UnityEngine.Object)(object)mapMgr != (UnityEngine.Object)null &&
-                    (UnityEngine.Object)(object)mapMgr.levelManager != (UnityEngine.Object)null)
+                RestoreWorldCamera();
+
+                UIMapLevelManager lvlMgr = _activeLevelManager;
+                if ((UnityEngine.Object)(object)lvlMgr == (UnityEngine.Object)null)
                 {
-                    var preloaded = mapMgr.levelManager._preLoadedMaps;
-                    if (preloaded != null)
+                    UIMapManager mapMgr = UIMapManager.Get();
+                    if ((UnityEngine.Object)(object)mapMgr != (UnityEngine.Object)null)
                     {
+                        lvlMgr = mapMgr.levelManager;
+                    }
+                }
+
+                if ((UnityEngine.Object)(object)lvlMgr != (UnityEngine.Object)null)
+                {
+                    var preloaded = lvlMgr._preLoadedMaps;
+                    if (preloaded != null && preloaded.Count > 0)
+                    {
+                        var enumerator = preloaded.GetEnumerator();
+                        while (enumerator.MoveNext())
+                        {
+                            LevelMap map = enumerator.Current.Value;
+                            if ((UnityEngine.Object)(object)map != (UnityEngine.Object)null &&
+                                (UnityEngine.Object)(object)((Component)map).gameObject != (UnityEngine.Object)null)
+                            {
+                                Scene mapScene = ((Component)map).gameObject.scene;
+                                if (mapScene.IsValid() && mapScene.isLoaded && mapScene != SceneManager.GetActiveScene())
+                                {
+                                    SceneManager.UnloadSceneAsync(mapScene);
+                                }
+                                else
+                                {
+                                    UnityEngine.Object.Destroy(((Component)map).gameObject);
+                                }
+                            }
+                        }
                         preloaded.Clear();
-                        Plugin.L.LogInfo("[Map] Purged stale _preLoadedMaps on level change to prevent memory leaks.");
+                        Plugin.L.LogInfo("[Map] Purged and unloaded stale _preLoadedMaps on level change.");
                     }
                 }
             }
