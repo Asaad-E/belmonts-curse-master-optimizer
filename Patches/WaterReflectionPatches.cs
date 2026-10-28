@@ -20,7 +20,20 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPostfix]
         public static void AfterEnable(PlanarReflectionRenderer __instance)
         {
-            ConfigureRendererInstance(__instance);
+            if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
+            {
+                ConfigureRendererInstance(__instance);
+            }
+        }
+
+        [HarmonyPatch(typeof(PlanarReflectionRenderer), "OnDisable")]
+        [HarmonyPostfix]
+        public static void AfterDisable(PlanarReflectionRenderer __instance)
+        {
+            if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
+            {
+                _configuredInstanceIds.Remove(((UnityEngine.Object)__instance).GetInstanceID());
+            }
         }
 
         [HarmonyPatch(typeof(PlanarReflectionRenderer), "OnDestroy")]
@@ -33,12 +46,47 @@ namespace BelmontsCurseMasterOptimizer.Patches
             }
         }
 
+        [HarmonyPatch(typeof(PlanarReflectionRenderer), "OnQualityChanged")]
+        [HarmonyPostfix]
+        public static void AfterQualityChanged(PlanarReflectionRenderer __instance)
+        {
+            if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
+            {
+                _configuredInstanceIds.Remove(((UnityEngine.Object)__instance).GetInstanceID());
+                if (ReflectionMode != 2)
+                {
+                    ConfigureRendererInstance(__instance);
+                }
+            }
+        }
+
+        public static void ReapplyAllWaterSettings()
+        {
+            try
+            {
+                _configuredInstanceIds.Clear();
+                if (ReflectionMode == 2) return;
+
+                foreach (PlanarReflectionRenderer renderer in UnityEngine.Object.FindObjectsOfType<PlanarReflectionRenderer>())
+                {
+                    if ((UnityEngine.Object)(object)renderer != (UnityEngine.Object)null)
+                    {
+                        ConfigureRendererInstance(renderer);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.L.LogWarning("[WaterReflection] ReapplyAllWaterSettings error: " + ex.Message);
+            }
+        }
+
         private static void ConfigureRendererInstance(PlanarReflectionRenderer renderer)
         {
             if ((UnityEngine.Object)(object)renderer == (UnityEngine.Object)null) return;
 
             int id = ((UnityEngine.Object)renderer).GetInstanceID();
-            if (_configuredInstanceIds.Contains(id)) return;
+            _configuredInstanceIds.Add(id);
 
             try
             {
@@ -61,7 +109,6 @@ namespace BelmontsCurseMasterOptimizer.Patches
 
                     // Apply safely outside the active URP render loop
                     renderer.ApplySettings();
-                    _configuredInstanceIds.Add(id);
                     Plugin.L.LogInfo($"[WaterReflection] Configured planar reflection renderer instance #{id} with 60 FPS settings.");
                 }
             }
@@ -81,14 +128,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 return false;
             }
 
-            if (ReflectionMode == 1)
-            {
-                // Frame-skip: Render every 2nd frame
-                return (Time.frameCount % 2 == 0);
-            }
-
-            // Mode 0: Optimized Every Frame
-            // Fallback initialization if OnEnable was bypassed
+            // CRITICAL: Ensure renderer is configured BEFORE the frame-skip check!
             if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null)
             {
                 int id = ((UnityEngine.Object)__instance).GetInstanceID();
@@ -96,6 +136,12 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 {
                     ConfigureRendererInstance(__instance);
                 }
+            }
+
+            if (ReflectionMode == 1)
+            {
+                // Frame-skip: Render every 2nd frame
+                return (Time.frameCount % 2 == 0);
             }
 
             // Render smoothly every frame
