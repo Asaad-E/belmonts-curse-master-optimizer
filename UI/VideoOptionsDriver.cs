@@ -21,7 +21,7 @@ namespace BelmontsCurseMasterOptimizer.UI
 
         private void Update()
         {
-            // 1. Dynamic Zoom Optimization
+            // 1. Dynamic Zoom Optimization (supports perspective pullback)
             CameraZoomPatches.UpdateZoomOptimization();
 
             // 2. Map Screen Black-Screen Watchdog
@@ -30,27 +30,33 @@ namespace BelmontsCurseMasterOptimizer.UI
             // 3. Active Incremental GC Heartbeat
             StutterAndGCPatches.IncrementalHeartbeat();
 
-            // 4. Zero-Latency RenderScale Lock: Guarantee text sharpness every frame on Med/High
+            // 4. Poll asynchronous string table loading after language changes
+            VideoOptions.PollPendingLocaleStrings(Time.unscaledDeltaTime);
+
+            // 5. Zero-Latency RenderScale & UpscalingFilter Lock: Guarantee text sharpness every frame on Med/High
             var pipe = GraphicsSettings.currentRenderPipeline;
             if (pipe != null)
             {
                 var urp = pipe.TryCast<UniversalRenderPipelineAsset>();
                 if (urp != null)
                 {
-                    int quality = QualitySettings.GetQualityLevel();
+                    int quality = ((Plugin.QualityPresetConfig != null) ? Plugin.QualityPresetConfig.Value : QualitySettings.GetQualityLevel());
                     float targetScale = (quality >= 1) ? 1.0f : 0.85f;
                     if (Mathf.Abs(urp.renderScale - targetScale) > 0.001f)
                     {
                         urp.renderScale = targetScale;
-                        if (quality >= 1)
-                        {
-                            urp.upscalingFilter = UpscalingFilterSelection.Auto;
-                        }
+                    }
+
+                    // Independent enforcement: ensure FSR filter is never left active on Medium/High
+                    UpscalingFilterSelection targetFilter = (quality >= 1) ? UpscalingFilterSelection.Auto : UpscalingFilterSelection.FSR;
+                    if (urp.upscalingFilter != targetFilter)
+                    {
+                        urp.upscalingFilter = targetFilter;
                     }
                 }
             }
 
-            // 5. Periodic engine maintenance every 1 second: upload buffer and SRP batcher
+            // 6. Periodic engine maintenance every 1 second: upload buffer and SRP batcher
             tweakTimer -= Time.unscaledDeltaTime;
             if (tweakTimer <= 0f)
             {
