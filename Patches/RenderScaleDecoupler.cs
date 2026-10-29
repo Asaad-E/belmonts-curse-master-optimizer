@@ -35,7 +35,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
             Screen     // any other camera presenting to the screen (menus, loading, title): native
         }
 
-        public static readonly int[] Percents = { 100, 95, 90, 85, 80, 75, 70 };
+        public static readonly int[] Percents = { 100, 50, 5 }; // test values: drastic steps to confirm the scale takes effect
 
         internal static float UserScale = 1f;
         private static bool _active;
@@ -74,7 +74,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
 
         public static void SetUserPercent(int percent)
         {
-            UserScale = Mathf.Clamp(percent, 70, 100) / 100f;
+            UserScale = Mathf.Clamp(percent, 5, 100) / 100f;
             bool active = UserScale < 0.995f;
             if (active != _active)
             {
@@ -93,6 +93,12 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 ApplyUpscaler();
             }
             Plugin.L?.LogInfo($"[RenderScale] 3D resolution {Mathf.RoundToInt(UserScale * 100f)}% (UI and menus stay native)");
+        }
+
+        /// <summary>Called after the mod changes the quality level, which can switch the pipeline asset.</summary>
+        public static void MarkAssetDirty()
+        {
+            _assetDirty = true;
         }
 
         public static int PercentToIndex(int percent)
@@ -287,18 +293,6 @@ namespace BelmontsCurseMasterOptimizer.Patches
         public static void BeforeGameReadsRenderScale()
         {
             WriteScale(_gameScale);
-        }
-
-        /// <summary>A quality change recreates the pipeline, possibly with a different asset.</summary>
-        [HarmonyPatch]
-        public static class PipelinePatches
-        {
-            [HarmonyPatch(typeof(UniversalRenderPipeline), MethodType.Constructor, new Type[] { typeof(UniversalRenderPipelineAsset) })]
-            [HarmonyPostfix]
-            public static void AfterPipelineCreated()
-            {
-                _assetDirty = true;
-            }
         }
     }
 }

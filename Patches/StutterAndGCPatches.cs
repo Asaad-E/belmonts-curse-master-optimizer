@@ -79,7 +79,6 @@ namespace BelmontsCurseMasterOptimizer.Patches
             try
             {
                 _inRoomChange = false;
-                ParticlePatches.PruneAndApplyActiveParticles();
             }
             catch {}
         }

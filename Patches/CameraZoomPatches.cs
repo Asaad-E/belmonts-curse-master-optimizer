@@ -51,7 +51,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 }
                 else
                 {
-                    // Clamp FOV to safe trigonometric range [1.0f, 160.0f]
+                    // Clamp FOV to safe trigonometric range [1.0f, 160.0f] to guard against Cinemachine blend singularities
                     float safeFov = Mathf.Clamp(cam.fieldOfView, 1.0f, 160.0f);
                     visibleHeight = 2.0f * camDistZ * Mathf.Tan(safeFov * 0.5f * Mathf.Deg2Rad);
                 }
@@ -75,6 +75,12 @@ namespace BelmontsCurseMasterOptimizer.Patches
                     {
                         urp.shadowDistance = Mathf.Lerp(urp.shadowDistance, targetDist, Time.unscaledDeltaTime * 4.0f);
                     }
+
+                    // CRITICAL LIGHT STABILITY FIX:
+                    // NEVER mutate urp.maxAdditionalLightsCount dynamically at runtime!
+                    // Changing maxAdditionalLightsCount forces URP to reallocate the GPU structured light buffer
+                    // mid-frame, causing dynamic lights (torches, spark lights, ambient hazards) to suddenly pop on/off,
+                    // producing screen-wide lighting flicker and visual glitches.
                 }
                 else if (_isCurrentlyZoomedOut)
                 {

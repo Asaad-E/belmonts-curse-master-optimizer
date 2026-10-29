@@ -1,154 +1,101 @@
 using System;
-using HarmonyLib;
+using Il2CppInterop.Runtime;
+using Il2CppInterop.Runtime.InteropTypes;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace BelmontsCurseMasterOptimizer.Patches
 {
-    /// <summary>
-    /// Fits the pause menu inside WorldSpaceUICamera on 16:10 screens (Steam Deck).
-    ///
-    /// Event driven: the game's SwitchToWorldSpaceUi coroutines hand us the menu camera and canvas while the
-    /// menu opens and closes, so nothing is searched for. The component stays disabled (no LateUpdate) except
-    /// while the menu is in world space, where it only refits if the screen size changes.
-    /// </summary>
     public class MenuCamFix : MonoBehaviour
     {
-        private const string MenuCameraName = "WorldSpaceUICamera";
+        private static MenuCamFix _instance;
+        private Camera uiCam;
+        private Canvas menu;
+        private float origSize = -1f;
+        private float refresh;
 
-        internal static MenuCamFix Instance;
-        private static IntPtr _switcherPtr;
-
-        private static Camera _cam;
-        private static IntPtr _camPtr;
-        private static Canvas _canvas;
-        private static float _origSize = -1f;
-        private static int _fitWidth;
-        private static int _fitHeight;
+        public static bool IsMenuShowing
+        {
+            get
+            {
+                try
+                {
+                    return MapPatches.IsGameMenuOpen;
+                }
+                catch {}
+                return false;
+            }
+        }
 
         public MenuCamFix(IntPtr p) : base(p)
         {
-            Instance = this;
+            _instance = this;
         }
 
-        private void Awake()
-        {
-            enabled = false;
-        }
-
-        // Only runs while the menu is shown in world space.
         private void LateUpdate()
         {
-            if (!IsWorldSpaceShown())
+            refresh -= Time.unscaledDeltaTime;
+            if (((UnityEngine.Object)(object)uiCam == (UnityEngine.Object)null || (UnityEngine.Object)(object)menu == (UnityEngine.Object)null) && refresh <= 0f)
             {
-                Restore();
-                return;
+                refresh = 1f;
+                foreach (UnityEngine.Object item in (Il2CppArrayBase<UnityEngine.Object>)(object)Resources.FindObjectsOfTypeAll(Il2CppType.Of<Camera>()))
+                {
+                    Camera val = ((Il2CppObjectBase)item).Cast<Camera>();
+                    if (((UnityEngine.Object)val).name == "WorldSpaceUICamera")
+                    {
+                        Scene scene = ((Component)val).gameObject.scene;
+                        if (scene.IsValid())
+                        {
+                            uiCam = val;
+                            origSize = val.orthographicSize;
+                        }
+                    }
+                }
+                foreach (UnityEngine.Object item2 in (Il2CppArrayBase<UnityEngine.Object>)(object)Resources.FindObjectsOfTypeAll(Il2CppType.Of<Canvas>()))
+                {
+                    Canvas val2 = ((Il2CppObjectBase)item2).Cast<Canvas>();
+                    if (((UnityEngine.Object)val2).name == "GameMenu" && val2.isRootCanvas)
+                    {
+                        Scene scene = ((Component)val2).gameObject.scene;
+                        if (scene.IsValid())
+                        {
+                            menu = val2;
+                        }
+                    }
+                }
             }
-            if (Screen.width != _fitWidth || Screen.height != _fitHeight)
-            {
-                Fit();
-            }
-        }
 
-        internal static bool Track(SwitchToWorldSpaceUi switcher)
-        {
-            if ((UnityEngine.Object)(object)switcher == (UnityEngine.Object)null)
-            {
-                return false;
-            }
-            IntPtr ptr = switcher.Pointer;
-            if (ptr == _switcherPtr && (UnityEngine.Object)(object)_cam != (UnityEngine.Object)null)
-            {
-                return true;
-            }
-            // The loading screen uses SwitchToWorldSpaceUi too; only the pause menu camera was ever adjusted.
-            Camera cam = switcher.worldSpaceCamera;
-            if ((UnityEngine.Object)(object)cam == (UnityEngine.Object)null || cam.name != MenuCameraName)
-            {
-                return false;
-            }
-            _switcherPtr = ptr;
-            _canvas = switcher.worldSpaceCanvas;
-            if (cam.Pointer != _camPtr)
-            {
-                _cam = cam;
-                _camPtr = cam.Pointer;
-                _origSize = cam.orthographicSize;
-            }
-            return true;
-        }
-
-        internal static bool IsWorldSpaceShown()
-        {
-            return (UnityEngine.Object)(object)_cam != (UnityEngine.Object)null
-                && (UnityEngine.Object)(object)_canvas != (UnityEngine.Object)null
-                && _canvas.renderMode == RenderMode.WorldSpace
-                && _cam.isActiveAndEnabled;
-        }
-
-        internal static void Fit()
-        {
-            _fitWidth = Screen.width;
-            _fitHeight = Screen.height;
-            if (!_cam.orthographic || (Plugin.FixMenuZoomConfig != null && !Plugin.FixMenuZoomConfig.Value))
-            {
-                SetSize(_origSize);
-                return;
-            }
-            RectTransform rt = _canvas.GetComponent<RectTransform>();
-            Rect rect = rt.rect;
-            Vector3 scale = rt.lossyScale;
-            float targetSize = Mathf.Max(rect.height * scale.y * 0.5f, rect.width * scale.x * 0.5f / _cam.aspect);
-            SetSize(Mathf.Max(targetSize, _origSize));
-        }
-
-        internal static void Restore()
-        {
-            if ((UnityEngine.Object)(object)_cam != (UnityEngine.Object)null)
-            {
-                SetSize(_origSize);
-            }
-            if ((UnityEngine.Object)(object)Instance != (UnityEngine.Object)null)
-            {
-                Instance.enabled = false;
-            }
-        }
-
-        private static void SetSize(float size)
-        {
-            if (size > 0f && _cam.orthographicSize != size)
-            {
-                _cam.orthographicSize = size;
-            }
-        }
-    }
-
-    /// <summary>Hooks the pause menu's world-space transition coroutines (they only run while it opens or closes).</summary>
-    [HarmonyPatch]
-    public static class MenuCamFixPatches
-    {
-        [HarmonyPatch(typeof(SwitchToWorldSpaceUi._CoroutineToWorld_d__12), nameof(SwitchToWorldSpaceUi._CoroutineToWorld_d__12.MoveNext))]
-        [HarmonyPostfix]
-        public static void AfterToWorldStep(SwitchToWorldSpaceUi._CoroutineToWorld_d__12 __instance)
-        {
-            if (!MenuCamFix.Track(__instance.__4__this) || !MenuCamFix.IsWorldSpaceShown())
+            if (Plugin.FixMenuZoomConfig != null && !Plugin.FixMenuZoomConfig.Value)
             {
                 return;
             }
-            MenuCamFix.Fit();
-            if ((UnityEngine.Object)(object)MenuCamFix.Instance != (UnityEngine.Object)null)
-            {
-                MenuCamFix.Instance.enabled = true;
-            }
-        }
 
-        [HarmonyPatch(typeof(SwitchToWorldSpaceUi._CoroutineToOverlay_d__10), nameof(SwitchToWorldSpaceUi._CoroutineToOverlay_d__10.MoveNext))]
-        [HarmonyPostfix]
-        public static void AfterToOverlayStep(SwitchToWorldSpaceUi._CoroutineToOverlay_d__10 __instance)
-        {
-            // Keep the fit during the fade-out; restore once the canvas has left world space.
-            if (MenuCamFix.Track(__instance.__4__this) && !MenuCamFix.IsWorldSpaceShown())
+            if ((UnityEngine.Object)(object)uiCam == (UnityEngine.Object)null || !uiCam.orthographic)
             {
-                MenuCamFix.Restore();
+                return;
+            }
+
+            if (origSize < 0f)
+            {
+                origSize = uiCam.orthographicSize;
+            }
+
+            if ((UnityEngine.Object)(object)menu != (UnityEngine.Object)null && ((Component)menu).gameObject.activeInHierarchy && (int)menu.renderMode == 2 && ((Behaviour)uiCam).isActiveAndEnabled)
+            {
+                RectTransform component = ((Component)menu).GetComponent<RectTransform>();
+                Rect rect = component.rect;
+                float height = rect.height * ((Transform)component).lossyScale.y;
+                float width = rect.width * ((Transform)component).lossyScale.x;
+                float targetSize = Mathf.Max(height * 0.5f, width * 0.5f / uiCam.aspect);
+                if (targetSize > origSize)
+                {
+                    uiCam.orthographicSize = targetSize;
+                }
+            }
+            else if (uiCam.orthographicSize != origSize)
+            {
+                uiCam.orthographicSize = origSize;
             }
         }
     }

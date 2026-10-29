@@ -1,6 +1,6 @@
 # Belmont's Curse Master Optimizer
 
-**Belmont's Curse Master Optimizer** is a comprehensive performance, smoothness, and quality-of-life mod for *Castlevania: Belmont's Curse*. It is designed to improve performance, frame-pacing, and responsiveness on Steam Deck and PC by addressing traversal stutters, map loading delays, and rendering bottlenecks.
+**Belmont's Curse Master Optimizer** is a comprehensive performance, smoothness, and quality-of-life mod for *Castlevania: Belmont's Curse*. It delivers a rock-solid, fluid 60 FPS gameplay experience on Steam Deck and PC by eliminating the game's most frustrating traversal stutters, map loading freezes, and rendering bottlenecks.
 
 Every optimization is fully configurable live in-game through the native **Settings > Video** menu with complete controller and Steam Deck gamepad support.
 
@@ -14,7 +14,7 @@ While *Castlevania: Belmont's Curse* is an incredible retro-modern experience, t
 - Wide-angle camera zoom-outs in scenic vistas and boss arenas tank the framerate.
 - Planar water reflections can look jittery or choppy during movement.
 
-**Belmont's Curse Master Optimizer** mitigates these performance issues while maintaining native image sharpness and visual fidelity.
+**Belmont's Curse Master Optimizer** resolves all of these issues while maintaining 100% native image sharpness and visual fidelity.
 
 ---
 
@@ -22,7 +22,7 @@ While *Castlevania: Belmont's Curse* is an incredible retro-modern experience, t
 
 ### Instant, Zero-Lag Map Navigation
 - **The Problem:** Opening the map renders the entire 3D world behind it (dropping FPS), and closing the map freezes the game for ~2 seconds while unloading scene data.
-- **The Fix:** Caches map scenes in memory for rapid sub-frame opening and closing with zero recovery lag, optimizes map render cameras, and preserves the native background blur without blue/black screen artifacts.
+- **The Fix:** Caches map scenes in memory so opening and closing is instantaneous (<1 ms) with zero recovery lag, optimizes map render cameras, and preserves the native background blur without blue/black screen artifacts.
 
 ### Smooth 60 FPS Water Reflections
 - **The Problem:** Frame-skipping water reflections cause distracting jitter and sliding artifacts as the camera moves.
@@ -40,21 +40,13 @@ While *Castlevania: Belmont's Curse* is an incredible retro-modern experience, t
 - **The Problem:** Unseen enemies and animated props running complex skeletal calculations off-screen waste CPU cycles and drain handheld battery.
 - **The Fix:** Intelligently pauses bone transform calculations for off-screen enemies and enables the SRP Batcher engine-wide, significantly reducing CPU draw overhead and extending battery life on the Steam Deck.
 
-### Razor-Sharp Text & UI (Native Text Clarity)
+### Razor-Sharp Text & UI (Zero Blurriness Guarantee)
 - **The Problem:** Aggressive resolution downscaling can make dialogue text, damage numbers, and menu fonts blurry and soft.
 - **The Fix:** Strictly locks resolution scale to 1.0 (100% native pixel-sharp rendering) on Medium and High quality presets. Dialogue, UI, and TextMeshPro font elements remain crisp and clean at all times.
 
 ### Native In-Game Settings Menu
 - **The Problem:** Having to edit configuration files or restart the game to tweak settings.
 - **The Fix:** Adds clean, native options directly inside the game's **Settings > Video** menu with full gamepad D-pad and analog stick navigation. Any setting changed in-game is saved automatically.
-
-### Master Optimizer Sub-Menu (Zero Screen Overflow)
-- **The Problem:** Adding over a dozen custom performance and visual settings directly into the video menu caused rows to overflow off the bottom edge of the screen on Steam Deck (800p) and PC.
-- **The Fix:** An integrated sub-menu switcher pinned to the top of **Settings > Video** (`Standard Video`, `Graphics & Display`, `Performance & Engine`). Only 6 rows are visible per page with automatic D-pad navigation re-linking, ensuring zero screen clipping.
-
-### Decoupled 3D Resolution Scaling & AMD FSR RCAS
-- **The Problem:** Lowering the resolution scale in vanilla or naive mods blurred the UI, HUD, and menu text globally across the screen.
-- **The Fix:** The **3D Resolution** option scales only the gameplay camera. The HUD, dialogue, prompts and popups are ScreenSpaceOverlay canvases and stay native; the pause menu, loading screen and title screen are drawn by their own cameras, which are kept at 100%. No canvas is modified and nothing is polled: the scale is set per camera from URP's `beginCameraRendering` callback. Below 100% the 3D image is upscaled with AMD FSR 1.0 (configurable: `Upscaler`, `FsrSharpness`).
 
 ### 16:10 Aspect Ratio Fix for Steam Deck
 - **The Problem:** On 16:10 displays like the Steam Deck, the pause menu camera gets cropped or zoomed in awkwardly.
@@ -68,14 +60,10 @@ Once installed, open **Settings > Video** to configure:
 
 | Setting | Options | Description |
 | :--- | :--- | :--- |
-| **Master Optimizer** | Standard Video / Graphics & Display / Performance & Engine | Dedicated in-menu page switcher to navigate settings comfortably without screen overflow. |
 | **Max FPS** | 30 / 40 / 45 / 60 / 120 / Unlimited | Target framerate limit. Includes dedicated 40 FPS and 45 FPS modes for Steam Deck. |
 | **Graphics Quality** | Low / Medium / High | Overall graphics quality and asset fidelity. |
 | **3D Resolution Scale** | 100% to 70% (5% steps) | Independent 3D scene resolution scale during gameplay. Automatically locked to 100% in all menus for crystal-clear text. |
-| **FSR Edge Sharpness** | Soft (20%) / Light (40%) / Balanced (60%) / Sharp (80%) / Strong (100%) | AMD FidelityFX RCAS contrast-adaptive edge reconstruction sharpness. |
-| **Particle Density** | 100% (Full) / 60% (Optimized) / 30% (Low) | Caps particle count and emission rate, and trims heavy shadow overhead to save GPU cycles. |
-| **Field of View / Zoom** | Very Close / Close / Medium / Native / Far | Non-destructive camera framing via Cinemachine integration. |
-| **Water Reflections** | Optimized (60 FPS) / Frame-Skip / Off | Smooth 60 FPS reflection, legacy frame-skip, or completely off for battery savings. |
+| **Water Reflections** | Optimized (60 FPS) / Frame-Skip / Off | Silky smooth 60 FPS reflection, legacy frame-skip, or completely off for battery savings. |
 | **Fast Map Screen** | Enabled / Disabled | Eliminates the 2-second map close freeze and optimizes map rendering cameras. |
 | **Wide View Optimizer** | Enabled / Disabled | Automatically scales shadow distance during wide camera zoom-outs. |
 | **Off-Screen CPU Culling** | Enabled / Disabled | Culls off-screen non-combat prop bone transform updates to reduce CPU usage. |

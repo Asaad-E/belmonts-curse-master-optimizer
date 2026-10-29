@@ -10,7 +10,7 @@ using BelmontsCurseMasterOptimizer.UI;
 
 namespace BelmontsCurseMasterOptimizer
 {
-    [BepInPlugin("belmontscurse.masteroptimizer", "Belmont's Curse Master Optimizer", "1.4.0")]
+    [BepInPlugin("belmontscurse.masteroptimizer", "Belmont's Curse Master Optimizer", "1.3.0")]
     public class Plugin : BasePlugin
     {
         public const string Guid = "belmontscurse.masteroptimizer";
@@ -19,17 +19,15 @@ namespace BelmontsCurseMasterOptimizer
         internal static ManualLogSource L;
 
         internal static ConfigEntry<int> QualityPresetConfig;
-        internal static ConfigEntry<int> ParticleDensityConfig;
+        internal static ConfigEntry<int> RenderScale3DConfig;
+        internal static ConfigEntry<int> UpscalerConfig;
+        internal static ConfigEntry<float> FsrSharpnessConfig;
         internal static ConfigEntry<int> ReflectionModeConfig;
-        internal static ConfigEntry<int> OptimizerMenuPageConfig;
         internal static ConfigEntry<bool> FastMapConfig;
         internal static ConfigEntry<bool> ZoomOptimizerConfig;
         internal static ConfigEntry<bool> CpuCullingConfig;
         internal static ConfigEntry<bool> StutterFixConfig;
         internal static ConfigEntry<bool> FixMenuZoomConfig;
-        internal static ConfigEntry<int> RenderScale3DConfig;
-        internal static ConfigEntry<int> UpscalerConfig;
-        internal static ConfigEntry<float> FsrSharpnessConfig;
 
         public override void Load()
         {
@@ -43,11 +41,25 @@ namespace BelmontsCurseMasterOptimizer
                 new ConfigDescription("Graphics quality preset: 0 = Low, 1 = Medium, 2 = High", new AcceptableValueRange<int>(0, 2))
             );
 
-            ParticleDensityConfig = Config.Bind<int>(
+            RenderScale3DConfig = Config.Bind<int>(
                 "Graphics",
-                "ParticleDensity",
+                "RenderScale3D",
+                100,
+                new ConfigDescription("3D resolution in percent. Only the gameplay camera is scaled; HUD and menus stay native.", new AcceptableValueList<int>(RenderScaleDecoupler.Percents))
+            );
+
+            UpscalerConfig = Config.Bind<int>(
+                "Graphics",
+                "Upscaler",
                 1,
-                new ConfigDescription("Particle density limit: 0 = 100% (Full), 1 = 60% (Optimized), 2 = 30% (Low / Battery Saver)", new AcceptableValueRange<int>(0, 2))
+                new ConfigDescription("Upscaler used below 100%: 0 = game default, 1 = AMD FSR 1.0, 2 = bilinear", new AcceptableValueRange<int>(0, 2))
+            );
+
+            FsrSharpnessConfig = Config.Bind<float>(
+                "Graphics",
+                "FsrSharpness",
+                0.8f,
+                new ConfigDescription("FSR RCAS sharpness (0 = soft, 1 = sharpest)", new AcceptableValueRange<float>(0f, 1f))
             );
 
             ReflectionModeConfig = Config.Bind<int>(
@@ -55,13 +67,6 @@ namespace BelmontsCurseMasterOptimizer
                 "ReflectionMode",
                 0,
                 new ConfigDescription("Water reflection mode: 0 = Optimized (Smooth 60 FPS), 1 = Frame-Skip (30 FPS), 2 = Off", new AcceptableValueRange<int>(0, 2))
-            );
-
-            OptimizerMenuPageConfig = Config.Bind<int>(
-                "Menu",
-                "ActivePage",
-                0,
-                new ConfigDescription("Active settings menu page: 0 = Standard Video, 1 = Graphics & Visuals, 2 = Performance & Engine", new AcceptableValueRange<int>(0, 2))
             );
 
             FastMapConfig = Config.Bind<bool>(
@@ -75,7 +80,7 @@ namespace BelmontsCurseMasterOptimizer
                 "Performance",
                 "ZoomOptimizer",
                 true,
-                "Dynamically scales shadow distance during wide camera zoom-outs to prevent massive FPS drops."
+                "Dynamically scales shadow distance and light culling during wide camera zoom-outs to prevent massive FPS drops."
             );
 
             CpuCullingConfig = Config.Bind<bool>(
@@ -97,27 +102,6 @@ namespace BelmontsCurseMasterOptimizer
                 "FixMenuZoom",
                 true,
                 "Corrects the pause menu camera on 16:10 aspect ratio screens (e.g. Steam Deck)."
-            );
-
-            RenderScale3DConfig = Config.Bind<int>(
-                "Graphics",
-                "RenderScale3D",
-                100,
-                new ConfigDescription("Internal resolution of the 3D world in percent. HUD, menus and text always stay at native resolution.", new AcceptableValueList<int>(RenderScaleDecoupler.Percents))
-            );
-
-            UpscalerConfig = Config.Bind<int>(
-                "Graphics",
-                "Upscaler",
-                1,
-                new ConfigDescription("Upscaler used when 3D resolution is below 100%: 0 = Game default, 1 = AMD FSR 1.0, 2 = Bilinear", new AcceptableValueRange<int>(0, 2))
-            );
-
-            FsrSharpnessConfig = Config.Bind<float>(
-                "Graphics",
-                "FsrSharpness",
-                0.8f,
-                new ConfigDescription("FSR 1.0 RCAS sharpness (0 = soft, 1 = sharpest)", new AcceptableValueRange<float>(0f, 1f))
             );
 
             // Synchronize patch flags with configuration
@@ -161,10 +145,7 @@ namespace BelmontsCurseMasterOptimizer
             SafePatch(typeof(CullingAndCPUPatches), "CullingAndCPUPatches");
             SafePatch(typeof(VideoOptionPatches), "VideoOptionPatches");
             SafePatch(typeof(RenderScaleDecoupler), "RenderScaleDecoupler");
-            SafePatch(typeof(RenderScaleDecoupler.PipelinePatches), "RenderScaleDecoupler.PipelinePatches");
-            SafePatch(typeof(MenuCamFixPatches), "MenuCamFixPatches");
 
-            // 5. Per-camera 3D resolution (subscribes to URP's beginCameraRendering once; no polling)
             try
             {
                 RenderScaleDecoupler.Init();
@@ -176,7 +157,7 @@ namespace BelmontsCurseMasterOptimizer
             }
 
             Config.Save();
-            L.LogInfo("Belmont's Curse Master Optimizer v1.4.0 successfully loaded!");
+            L.LogInfo("Belmont's Curse Master Optimizer v1.3.0 successfully loaded!");
         }
     }
 }
