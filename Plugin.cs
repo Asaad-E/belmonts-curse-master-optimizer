@@ -162,6 +162,7 @@ namespace BelmontsCurseMasterOptimizer
             SafePatch(typeof(VideoOptionPatches), "VideoOptionPatches");
             SafePatch(typeof(RenderScaleDecoupler), "RenderScaleDecoupler");
             SafePatch(typeof(RenderScaleDecoupler.PipelinePatches), "RenderScaleDecoupler.PipelinePatches");
+            SafePatch(typeof(MenuCamFixPatches), "MenuCamFixPatches");
 
             // 5. Per-camera 3D resolution (subscribes to URP's beginCameraRendering once; no polling)
             try
