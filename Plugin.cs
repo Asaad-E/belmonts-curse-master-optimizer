@@ -24,8 +24,6 @@ namespace BelmontsCurseMasterOptimizer
         internal static ConfigEntry<int> ParticleDensityConfig;
         internal static ConfigEntry<int> FoVConfig;
         internal static ConfigEntry<int> ReflectionModeConfig;
-        internal static ConfigEntry<int> VolumetricFogConfig;
-        internal static ConfigEntry<bool> ShaderWarmupConfig;
         internal static ConfigEntry<int> OptimizerMenuPageConfig;
         internal static ConfigEntry<bool> FastMapConfig;
         internal static ConfigEntry<bool> ZoomOptimizerConfig;
@@ -80,20 +78,6 @@ namespace BelmontsCurseMasterOptimizer
                 new ConfigDescription("Water reflection mode: 0 = Optimized (Smooth 60 FPS), 1 = Frame-Skip (30 FPS), 2 = Off", new AcceptableValueRange<int>(0, 2))
             );
 
-            VolumetricFogConfig = Config.Bind<int>(
-                "Graphics",
-                "VolumetricFog",
-                1,
-                new ConfigDescription("Volumetric Fog & Light Shafts: 0 = Full (High), 1 = Optimized (Balanced), 2 = Off (Max Battery/FPS)", new AcceptableValueRange<int>(0, 2))
-            );
-
-            ShaderWarmupConfig = Config.Bind<bool>(
-                "Performance",
-                "ShaderWarmup",
-                true,
-                "Pre-warms all shaders and variant collections on scene loads and transitions to eliminate in-combat first-hit stutters."
-            );
-
             OptimizerMenuPageConfig = Config.Bind<int>(
                 "Menu",
                 "ActivePage",
@@ -138,8 +122,6 @@ namespace BelmontsCurseMasterOptimizer
 
             // Synchronize patch flags with configuration
             WaterReflectionPatches.ReflectionMode = ReflectionModeConfig.Value;
-            VolumetricFogPatches.VolumetricFogMode = VolumetricFogConfig.Value;
-            ShaderWarmupPatches.ShaderWarmupEnabled = ShaderWarmupConfig.Value;
             MapPatches.FastMapEnabled = FastMapConfig.Value;
             CameraZoomPatches.ZoomOptimizerEnabled = ZoomOptimizerConfig.Value;
             CullingAndCPUPatches.CpuCullingEnabled = CpuCullingConfig.Value;
@@ -176,14 +158,11 @@ namespace BelmontsCurseMasterOptimizer
             SafePatch(typeof(MapPatches), "MapPatches");
             SafePatch(typeof(CameraZoomPatches), "CameraZoomPatches");
             SafePatch(typeof(ParticlePatches), "ParticlePatches");
-            SafePatch(typeof(VolumetricFogPatches), "VolumetricFogPatches");
-            SafePatch(typeof(ShaderWarmupPatches), "ShaderWarmupPatches");
             SafePatch(typeof(WaterReflectionPatches), "WaterReflectionPatches");
             SafePatch(typeof(StutterAndGCPatches), "StutterAndGCPatches");
             SafePatch(typeof(CullingAndCPUPatches), "CullingAndCPUPatches");
             SafePatch(typeof(VideoOptionPatches), "VideoOptionPatches");
-
-            ShaderWarmupPatches.WarmupNow("Game Startup", force: true);
+            SafePatch(typeof(RenderScaleDecoupler), "RenderScaleDecoupler");
 
             Config.Save();
             L.LogInfo("Belmont's Curse Master Optimizer v1.3.0 successfully loaded!");

@@ -49,16 +49,12 @@ While *Castlevania: Belmont's Curse* is an incredible retro-modern experience, t
 - **The Fix:** Adds clean, native options directly inside the game's **Settings > Video** menu with full gamepad D-pad and analog stick navigation. Any setting changed in-game is saved automatically.
 
 ### Master Optimizer Sub-Menu (Zero Screen Overflow)
-- **The Problem:** Adding over a dozen custom performance and visual settings directly into the video menu caused rows to overflow off the bottom edge of the screen on Steam Deck and PC.
-- **The Fix:** An integrated sub-menu switcher pinned to the top of **Settings > Video** (`Standard Video`, `Graphics & Display`, `Performance & Engine`). Only 6–7 rows are visible per page with automatic D-pad navigation re-linking, ensuring zero screen clipping.
+- **The Problem:** Adding over a dozen custom performance and visual settings directly into the video menu caused rows to overflow off the bottom edge of the screen on Steam Deck (800p) and PC.
+- **The Fix:** An integrated sub-menu switcher pinned to the top of **Settings > Video** (`Standard Video`, `Graphics & Display`, `Performance & Engine`). Only 6 rows are visible per page with automatic D-pad navigation re-linking, ensuring zero screen clipping.
 
-### Dynamic Volumetric Fog & Light Shafts
-- **The Problem:** Raymarched light shafts and volumetric fog passes can heavily load the GPU/APU on Steam Deck, causing sudden framerate dips in atmospheric rooms.
-- **The Fix:** Configurable between Full (Vanilla), Optimized (16 samples, 0.5x RT resolution), and Off (disables raymarching passes completely), delivering significant battery savings and smoother frametimes.
-
-### Pre-Emptive Shader Warmup
-- **The Problem:** The first time a new weapon effect, spell, or enemy attack appears, Unity compiles the shader on-the-fly, causing a micro-freeze during intense combat.
-- **The Fix:** Pre-warms all compiled shaders and loaded `ShaderVariantCollection` assets during launch and scene transitions, eliminating first-hit combat stutters.
+### Decoupled 3D Resolution Scaling & AMD FSR RCAS
+- **The Problem:** Lowering the resolution scale in vanilla or naive mods blurred the UI, HUD, and menu text globally across the screen.
+- **The Fix:** Fully decouples 3D rendering from 2D canvases. The in-game HUD (`_hudRootCanvas`, damage popups, tooltips) is elevated to `ScreenSpaceOverlay` to render at native 1:1 pixel fidelity directly on top of upscaled 3D graphics, and all menus are automatically locked to 100% native resolution.
 
 ### 16:10 Aspect Ratio Fix for Steam Deck
 - **The Problem:** On 16:10 displays like the Steam Deck, the pause menu camera gets cropped or zoomed in awkwardly.
@@ -79,8 +75,6 @@ Once installed, open **Settings > Video** to configure:
 | **FSR Edge Sharpness** | Soft (20%) / Light (40%) / Balanced (60%) / Sharp (80%) / Strong (100%) | AMD FidelityFX RCAS contrast-adaptive edge reconstruction sharpness. |
 | **Particle Density** | 100% (Full) / 60% (Optimized) / 30% (Low) | Caps particle count and emission rate, and trims heavy shadow overhead to save GPU cycles. |
 | **Field of View / Zoom** | Very Close / Close / Medium / Native / Far | Non-destructive camera framing via Cinemachine integration. |
-| **Volumetric Fog** | Full (High) / Optimized / Off | Regulates raymarched light shafts sample count and render resolution to save GPU power. |
-| **Shader Pre-Warm** | Enabled / Disabled | Pre-compiles shader variants on launch and scene transitions to prevent combat hitches. |
 | **Water Reflections** | Optimized (60 FPS) / Frame-Skip / Off | Smooth 60 FPS reflection, legacy frame-skip, or completely off for battery savings. |
 | **Fast Map Screen** | Enabled / Disabled | Eliminates the 2-second map close freeze and optimizes map rendering cameras. |
 | **Wide View Optimizer** | Enabled / Disabled | Automatically scales shadow distance during wide camera zoom-outs. |

@@ -253,49 +253,6 @@ namespace BelmontsCurseMasterOptimizer.UI
                     if (Plugin.StutterFixConfig != null) Plugin.StutterFixConfig.Value = StutterAndGCPatches.StutterFixEnabled;
                     Plugin.Instance?.Config.Save();
                 }
-            },
-            new VideoOption
-            {
-                Path = "video/volumetricfog",
-                Key = "DeckFix_VolumetricFog",
-                Title = "Volumetric Fog",
-                Choices = new (string, string, int)[3]
-                {
-                    ("DeckFix_VolFog_Full", "Full (High)", 0),
-                    ("DeckFix_VolFog_Opt", "Optimized", 1),
-                    ("DeckFix_VolFog_Off", "Off", 2)
-                },
-                Default = () => (Plugin.VolumetricFogConfig != null) ? Math.Clamp(Plugin.VolumetricFogConfig.Value, 0, 2) : 1,
-                Apply = (int v) =>
-                {
-                    v = Math.Clamp(v, 0, 2);
-                    VolumetricFogPatches.VolumetricFogMode = v;
-                    VolumetricFogPatches.ApplyToAllActiveLightShafts();
-                    if (Plugin.VolumetricFogConfig != null) Plugin.VolumetricFogConfig.Value = v;
-                    Plugin.Instance?.Config.Save();
-                }
-            },
-            new VideoOption
-            {
-                Path = "video/shaderwarmup",
-                Key = "DeckFix_ShaderWarmup",
-                Title = "Shader Pre-Warm",
-                Choices = new (string, string, int)[2]
-                {
-                    ("DeckFix_ShaderWarm_On", "Enabled", 0),
-                    ("DeckFix_ShaderWarm_Off", "Disabled", 1)
-                },
-                Default = () => (Plugin.ShaderWarmupConfig != null && Plugin.ShaderWarmupConfig.Value) ? 0 : 1,
-                Apply = (int v) =>
-                {
-                    ShaderWarmupPatches.ShaderWarmupEnabled = (v == 0);
-                    if (ShaderWarmupPatches.ShaderWarmupEnabled)
-                    {
-                        ShaderWarmupPatches.WarmupNow("Menu Toggle", force: true);
-                    }
-                    if (Plugin.ShaderWarmupConfig != null) Plugin.ShaderWarmupConfig.Value = ShaderWarmupPatches.ShaderWarmupEnabled;
-                    Plugin.Instance?.Config.Save();
-                }
             }
         };
 
@@ -315,13 +272,11 @@ namespace BelmontsCurseMasterOptimizer.UI
             "video/renderscale",
             "video/fsrsharpness",
             "video/particledensity",
-            "video/fieldofview",
-            "video/volumetricfog"
+            "video/fieldofview"
         };
 
         private static readonly System.Collections.Generic.HashSet<string> EnginePaths = new System.Collections.Generic.HashSet<string>
         {
-            "video/shaderwarmup",
             "video/waterreflections",
             "video/fastmap",
             "video/zoomoptimizer",
@@ -413,35 +368,7 @@ namespace BelmontsCurseMasterOptimizer.UI
 
         public static bool IsInMenu()
         {
-            try
-            {
-                // While viewing the map: NEVER switch renderScale to 1.0f (which causes GPU buffer recreation!)
-                if (MapPatches.IsMapOpen) return false;
-
-                string sceneName = SceneManager.GetActiveScene().name;
-                if (!string.IsNullOrEmpty(sceneName) && (sceneName.Contains("Title") || sceneName.Contains("Init")))
-                {
-                    return true;
-                }
-
-                // If the video settings view or its root gameObject is currently active in hierarchy, we are inside settings!
-                if (Video != null && ((Component)Video).gameObject != null && ((Component)Video).gameObject.activeInHierarchy)
-                {
-                    return true;
-                }
-
-                var vsv = UnityEngine.Object.FindObjectOfType<VideoSettingsView>();
-                if (vsv != null && ((Component)vsv).gameObject != null && ((Component)vsv).gameObject.activeInHierarchy)
-                {
-                    return true;
-                }
-
-                // Lock to 100% native resolution when actively inside the pause menu / settings canvas,
-                // so all menu text and options are 100% pixel-perfect and razor-sharp!
-                if (MapPatches.IsGameMenuOpen) return true;
-            }
-            catch {}
-            return false;
+            return RenderScaleDecoupler.IsInMenu();
         }
 
         public static float GetTargetFSRSharpness()

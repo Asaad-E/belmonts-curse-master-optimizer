@@ -30,6 +30,9 @@ namespace BelmontsCurseMasterOptimizer.UI
             // 3. Poll asynchronous string table loading after language changes
             VideoOptions.PollPendingLocaleStrings(Time.unscaledDeltaTime);
 
+            // 4. Ensure HUD and popup canvases are decoupled (ScreenSpaceOverlay) for 100% native clarity
+            RenderScaleDecoupler.EnsureCanvasesDecoupled();
+
             // 5. Zero-Latency RenderScale & UpscalingFilter: Apply user-configured scale (100% to 50% in 5% steps)
             VideoOptions.ApplyCurrentRenderScale();
 
