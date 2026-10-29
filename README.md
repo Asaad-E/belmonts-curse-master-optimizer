@@ -54,7 +54,7 @@ While *Castlevania: Belmont's Curse* is an incredible retro-modern experience, t
 
 ### Decoupled 3D Resolution Scaling & AMD FSR RCAS
 - **The Problem:** Lowering the resolution scale in vanilla or naive mods blurred the UI, HUD, and menu text globally across the screen.
-- **The Fix:** Fully decouples 3D rendering from 2D canvases. The in-game HUD (`_hudRootCanvas`, damage popups, tooltips) is elevated to `ScreenSpaceOverlay` to render at native 1:1 pixel fidelity directly on top of upscaled 3D graphics, and all menus are automatically locked to 100% native resolution.
+- **The Fix:** The **3D Resolution** option scales only the gameplay camera. The HUD, dialogue, prompts and popups are ScreenSpaceOverlay canvases and stay native; the pause menu, loading screen and title screen are drawn by their own cameras, which are kept at 100%. No canvas is modified and nothing is polled: the scale is set per camera from URP's `beginCameraRendering` callback. Below 100% the 3D image is upscaled with AMD FSR 1.0 (configurable: `Upscaler`, `FsrSharpness`).
 
 ### 16:10 Aspect Ratio Fix for Steam Deck
 - **The Problem:** On 16:10 displays like the Steam Deck, the pause menu camera gets cropped or zoomed in awkwardly.

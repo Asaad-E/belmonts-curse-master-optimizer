@@ -27,6 +27,9 @@ namespace BelmontsCurseMasterOptimizer
         internal static ConfigEntry<bool> CpuCullingConfig;
         internal static ConfigEntry<bool> StutterFixConfig;
         internal static ConfigEntry<bool> FixMenuZoomConfig;
+        internal static ConfigEntry<int> RenderScale3DConfig;
+        internal static ConfigEntry<int> UpscalerConfig;
+        internal static ConfigEntry<float> FsrSharpnessConfig;
 
         public override void Load()
         {
@@ -96,6 +99,27 @@ namespace BelmontsCurseMasterOptimizer
                 "Corrects the pause menu camera on 16:10 aspect ratio screens (e.g. Steam Deck)."
             );
 
+            RenderScale3DConfig = Config.Bind<int>(
+                "Graphics",
+                "RenderScale3D",
+                100,
+                new ConfigDescription("Internal resolution of the 3D world in percent. HUD, menus and text always stay at native resolution.", new AcceptableValueList<int>(RenderScaleDecoupler.Percents))
+            );
+
+            UpscalerConfig = Config.Bind<int>(
+                "Graphics",
+                "Upscaler",
+                1,
+                new ConfigDescription("Upscaler used when 3D resolution is below 100%: 0 = Game default, 1 = AMD FSR 1.0, 2 = Bilinear", new AcceptableValueRange<int>(0, 2))
+            );
+
+            FsrSharpnessConfig = Config.Bind<float>(
+                "Graphics",
+                "FsrSharpness",
+                0.8f,
+                new ConfigDescription("FSR 1.0 RCAS sharpness (0 = soft, 1 = sharpest)", new AcceptableValueRange<float>(0f, 1f))
+            );
+
             // Synchronize patch flags with configuration
             WaterReflectionPatches.ReflectionMode = ReflectionModeConfig.Value;
             MapPatches.FastMapEnabled = FastMapConfig.Value;
@@ -136,6 +160,19 @@ namespace BelmontsCurseMasterOptimizer
             SafePatch(typeof(StutterAndGCPatches), "StutterAndGCPatches");
             SafePatch(typeof(CullingAndCPUPatches), "CullingAndCPUPatches");
             SafePatch(typeof(VideoOptionPatches), "VideoOptionPatches");
+            SafePatch(typeof(RenderScaleDecoupler), "RenderScaleDecoupler");
+            SafePatch(typeof(RenderScaleDecoupler.PipelinePatches), "RenderScaleDecoupler.PipelinePatches");
+
+            // 5. Per-camera 3D resolution (subscribes to URP's beginCameraRendering once; no polling)
+            try
+            {
+                RenderScaleDecoupler.Init();
+                RenderScaleDecoupler.SetUserPercent(RenderScale3DConfig.Value);
+            }
+            catch (Exception ex)
+            {
+                L.LogError($"[RenderScale] Init failed: {ex}");
+            }
 
             Config.Save();
             L.LogInfo("Belmont's Curse Master Optimizer v1.3.0 successfully loaded!");

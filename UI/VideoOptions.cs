@@ -76,6 +76,21 @@ namespace BelmontsCurseMasterOptimizer.UI
             },
             new VideoOption
             {
+                Path = "video/renderscale3d",
+                Key = "DeckFix_RenderScale3D",
+                Title = "3D Resolution (UI stays native)",
+                Choices = RenderScaleDecoupler.Percents.Select((p, i) => ($"DeckFix_RenderScale3D_{p}", p == 100 ? "100% (Native)" : $"{p}%", i)).ToArray(),
+                Default = () => RenderScaleDecoupler.PercentToIndex(Plugin.RenderScale3DConfig != null ? Plugin.RenderScale3DConfig.Value : 100),
+                Apply = (int v) =>
+                {
+                    int percent = RenderScaleDecoupler.Percents[Math.Clamp(v, 0, RenderScaleDecoupler.Percents.Length - 1)];
+                    if (Plugin.RenderScale3DConfig != null) Plugin.RenderScale3DConfig.Value = percent;
+                    Plugin.Instance?.Config.Save();
+                    RenderScaleDecoupler.SetUserPercent(percent);
+                }
+            },
+            new VideoOption
+            {
                 Path = "video/particledensity",
                 Key = "DeckFix_ParticleDensity",
                 Title = "Particle Density",
@@ -201,6 +216,7 @@ namespace BelmontsCurseMasterOptimizer.UI
         private static readonly System.Collections.Generic.HashSet<string> GraphicsPaths = new System.Collections.Generic.HashSet<string>
         {
             "video/quality",
+            "video/renderscale3d",
             "video/particledensity",
             "video/waterreflections"
         };
