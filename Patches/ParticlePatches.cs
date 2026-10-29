@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using HarmonyLib;
 using Il2CppInterop.Runtime;
 using Il2CppInterop.Runtime.InteropTypes;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
@@ -9,7 +8,6 @@ using UnityEngine.Rendering;
 
 namespace BelmontsCurseMasterOptimizer.Patches
 {
-    [HarmonyPatch]
     public static class ParticlePatches
     {
         private struct ParticleData
@@ -115,35 +113,6 @@ namespace BelmontsCurseMasterOptimizer.Patches
         public static void ClearTrackedParticles()
         {
             _trackedParticles.Clear();
-        }
-
-        [HarmonyPatch(typeof(ParticleSystem), "Play", new Type[] { typeof(bool) })]
-        [HarmonyPrefix]
-        public static void BeforePlayWithChildren(ParticleSystem __instance, bool withChildren)
-        {
-            OptimizeParticleSystem(__instance);
-            if (withChildren)
-            {
-                try
-                {
-                    var children = __instance.GetComponentsInChildren<ParticleSystem>();
-                    if (children != null)
-                    {
-                        for (int i = 0; i < children.Length; i++)
-                        {
-                            OptimizeParticleSystem(children[i]);
-                        }
-                    }
-                }
-                catch {}
-            }
-        }
-
-        [HarmonyPatch(typeof(ParticleSystem), "Play", new Type[0])]
-        [HarmonyPrefix]
-        public static void BeforePlay(ParticleSystem __instance)
-        {
-            OptimizeParticleSystem(__instance);
         }
     }
 }

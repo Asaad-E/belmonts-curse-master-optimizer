@@ -19,10 +19,7 @@ namespace BelmontsCurseMasterOptimizer
         internal static ManualLogSource L;
 
         internal static ConfigEntry<int> QualityPresetConfig;
-        internal static ConfigEntry<int> RenderScaleConfig;
-        internal static ConfigEntry<int> FSRSharpnessConfig;
         internal static ConfigEntry<int> ParticleDensityConfig;
-        internal static ConfigEntry<int> FoVConfig;
         internal static ConfigEntry<int> ReflectionModeConfig;
         internal static ConfigEntry<int> OptimizerMenuPageConfig;
         internal static ConfigEntry<bool> FastMapConfig;
@@ -43,32 +40,11 @@ namespace BelmontsCurseMasterOptimizer
                 new ConfigDescription("Graphics quality preset: 0 = Low, 1 = Medium, 2 = High", new AcceptableValueRange<int>(0, 2))
             );
 
-            RenderScaleConfig = Config.Bind<int>(
-                "Graphics",
-                "RenderScale",
-                0,
-                new ConfigDescription("3D Resolution Scale: 0 = 100% (Native), 1 = 95%, 2 = 90%, 3 = 85%, 4 = 80%, 5 = 75%, 6 = 70%", new AcceptableValueRange<int>(0, 6))
-            );
-
-            FSRSharpnessConfig = Config.Bind<int>(
-                "Graphics",
-                "FSRSharpness",
-                3,
-                new ConfigDescription("FSR RCAS Edge Sharpness: 0 = 20% (Soft), 1 = 40% (Light), 2 = 60% (Balanced), 3 = 80% (Sharp), 4 = 100% (Strong)", new AcceptableValueRange<int>(0, 4))
-            );
-
             ParticleDensityConfig = Config.Bind<int>(
                 "Graphics",
                 "ParticleDensity",
                 1,
                 new ConfigDescription("Particle density limit: 0 = 100% (Full), 1 = 60% (Optimized), 2 = 30% (Low / Battery Saver)", new AcceptableValueRange<int>(0, 2))
-            );
-
-            FoVConfig = Config.Bind<int>(
-                "Graphics",
-                "FieldOfView",
-                3,
-                new ConfigDescription("Field of View / Camera Framing: 0 = Very Close (0.80x), 1 = Close (0.90x), 2 = Medium (0.95x), 3 = Native (1.00x), 4 = Far (1.15x)", new AcceptableValueRange<int>(0, 4))
             );
 
             ReflectionModeConfig = Config.Bind<int>(
@@ -82,7 +58,7 @@ namespace BelmontsCurseMasterOptimizer
                 "Menu",
                 "ActivePage",
                 0,
-                new ConfigDescription("Active settings menu page: 0 = Standard Video, 1 = Graphics & Display, 2 = Performance & Engine", new AcceptableValueRange<int>(0, 2))
+                new ConfigDescription("Active settings menu page: 0 = Standard Video, 1 = Graphics & Visuals, 2 = Performance & Engine", new AcceptableValueRange<int>(0, 2))
             );
 
             FastMapConfig = Config.Bind<bool>(
@@ -96,7 +72,7 @@ namespace BelmontsCurseMasterOptimizer
                 "Performance",
                 "ZoomOptimizer",
                 true,
-                "Dynamically scales shadow distance and light culling during wide camera zoom-outs to prevent massive FPS drops."
+                "Dynamically scales shadow distance during wide camera zoom-outs to prevent massive FPS drops."
             );
 
             CpuCullingConfig = Config.Bind<bool>(
@@ -156,13 +132,10 @@ namespace BelmontsCurseMasterOptimizer
             }
 
             SafePatch(typeof(MapPatches), "MapPatches");
-            SafePatch(typeof(CameraZoomPatches), "CameraZoomPatches");
-            SafePatch(typeof(ParticlePatches), "ParticlePatches");
             SafePatch(typeof(WaterReflectionPatches), "WaterReflectionPatches");
             SafePatch(typeof(StutterAndGCPatches), "StutterAndGCPatches");
             SafePatch(typeof(CullingAndCPUPatches), "CullingAndCPUPatches");
             SafePatch(typeof(VideoOptionPatches), "VideoOptionPatches");
-            SafePatch(typeof(RenderScaleDecoupler), "RenderScaleDecoupler");
 
             Config.Save();
             L.LogInfo("Belmont's Curse Master Optimizer v1.3.0 successfully loaded!");

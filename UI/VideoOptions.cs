@@ -70,55 +70,8 @@ namespace BelmontsCurseMasterOptimizer.UI
                         CullingAndCPUPatches.EnsureSRPBatcher();
                         ReapplyFrames = 3;
                     }
-                    ApplyCurrentRenderScale();
                     if (Plugin.QualityPresetConfig != null) Plugin.QualityPresetConfig.Value = v;
                     Plugin.Instance?.Config.Save();
-                }
-            },
-            new VideoOption
-            {
-                Path = "video/renderscale",
-                Key = "DeckFix_RenderScale",
-                Title = "3D Resolution Scale",
-                Choices = new (string, string, int)[7]
-                {
-                    ("DeckFix_Scale_100", "100% (Native)", 0),
-                    ("DeckFix_Scale_95", "95%", 1),
-                    ("DeckFix_Scale_90", "90%", 2),
-                    ("DeckFix_Scale_85", "85%", 3),
-                    ("DeckFix_Scale_80", "80%", 4),
-                    ("DeckFix_Scale_75", "75%", 5),
-                    ("DeckFix_Scale_70", "70%", 6)
-                },
-                Default = () => (Plugin.RenderScaleConfig != null) ? Math.Clamp(Plugin.RenderScaleConfig.Value, 0, 6) : 0,
-                Apply = (int v) =>
-                {
-                    v = Math.Clamp(v, 0, 6);
-                    if (Plugin.RenderScaleConfig != null) Plugin.RenderScaleConfig.Value = v;
-                    Plugin.Instance?.Config.Save();
-                    Plugin.L.LogInfo($"[RenderScale] Setting updated: {100 - (v * 5)}% (scale: {1.0f - (v * 0.05f):F2})");
-                }
-            },
-            new VideoOption
-            {
-                Path = "video/fsrsharpness",
-                Key = "DeckFix_FSRSharpness",
-                Title = "FSR Edge Sharpness",
-                Choices = new (string, string, int)[5]
-                {
-                    ("DeckFix_FSR_20", "Soft (20%)", 0),
-                    ("DeckFix_FSR_40", "Light (40%)", 1),
-                    ("DeckFix_FSR_60", "Balanced (60%)", 2),
-                    ("DeckFix_FSR_80", "Sharp (80%)", 3),
-                    ("DeckFix_FSR_100", "Strong (100%)", 4)
-                },
-                Default = () => (Plugin.FSRSharpnessConfig != null) ? Math.Clamp(Plugin.FSRSharpnessConfig.Value, 0, 4) : 3,
-                Apply = (int v) =>
-                {
-                    v = Math.Clamp(v, 0, 4);
-                    if (Plugin.FSRSharpnessConfig != null) Plugin.FSRSharpnessConfig.Value = v;
-                    Plugin.Instance?.Config.Save();
-                    ApplyCurrentRenderScale();
                 }
             },
             new VideoOption
@@ -139,27 +92,6 @@ namespace BelmontsCurseMasterOptimizer.UI
                     if (Plugin.ParticleDensityConfig != null) Plugin.ParticleDensityConfig.Value = v;
                     Plugin.Instance?.Config.Save();
                     ParticlePatches.ApplyToAllActiveParticles();
-                }
-            },
-            new VideoOption
-            {
-                Path = "video/fieldofview",
-                Key = "DeckFix_FoV",
-                Title = "Field of View / Zoom",
-                Choices = new (string, string, int)[5]
-                {
-                    ("DeckFix_FoV_0", "Very Close", 0),
-                    ("DeckFix_FoV_1", "Close", 1),
-                    ("DeckFix_FoV_2", "Medium", 2),
-                    ("DeckFix_FoV_3", "Native", 3),
-                    ("DeckFix_FoV_4", "Far", 4)
-                },
-                Default = () => (Plugin.FoVConfig != null) ? Math.Clamp(Plugin.FoVConfig.Value, 0, 4) : 3,
-                Apply = (int v) =>
-                {
-                    v = Math.Clamp(v, 0, 4);
-                    if (Plugin.FoVConfig != null) Plugin.FoVConfig.Value = v;
-                    Plugin.Instance?.Config.Save();
                 }
             },
             new VideoOption
@@ -269,15 +201,12 @@ namespace BelmontsCurseMasterOptimizer.UI
         private static readonly System.Collections.Generic.HashSet<string> GraphicsPaths = new System.Collections.Generic.HashSet<string>
         {
             "video/quality",
-            "video/renderscale",
-            "video/fsrsharpness",
             "video/particledensity",
-            "video/fieldofview"
+            "video/waterreflections"
         };
 
         private static readonly System.Collections.Generic.HashSet<string> EnginePaths = new System.Collections.Generic.HashSet<string>
         {
-            "video/waterreflections",
             "video/fastmap",
             "video/zoomoptimizer",
             "video/cpuculling",
@@ -363,93 +292,6 @@ namespace BelmontsCurseMasterOptimizer.UI
             catch (System.Exception ex)
             {
                 Plugin.L?.LogWarning($"[VideoOptions] RebuildNavigation error: {ex.Message}");
-            }
-        }
-
-        public static bool IsInMenu()
-        {
-            return RenderScaleDecoupler.IsInMenu();
-        }
-
-        public static float GetTargetFSRSharpness()
-        {
-            int index = (Plugin.FSRSharpnessConfig != null) ? Plugin.FSRSharpnessConfig.Value : 3;
-            switch (index)
-            {
-                case 0: return 0.20f; // Soft (20%)
-                case 1: return 0.40f; // Light (40%)
-                case 2: return 0.60f; // Balanced (60%)
-                case 4: return 1.00f; // Strong (100%)
-                default: return 0.80f; // Sharp (80%, default)
-            }
-        }
-
-        public static float GetTargetRenderScale()
-        {
-            int index = (Plugin.RenderScaleConfig != null) ? Plugin.RenderScaleConfig.Value : 0;
-            float scale = 1.0f - (index * 0.05f);
-            return Mathf.Clamp(scale, 0.70f, 1.0f);
-        }
-
-        public static void ApplyCurrentRenderScale()
-        {
-            try
-            {
-                var pipe = GraphicsSettings.currentRenderPipeline;
-                if (pipe != null)
-                {
-                    var urp = pipe.TryCast<UniversalRenderPipelineAsset>();
-                    if (urp != null)
-                    {
-                        // In menus (pause menu, settings, title screen), ALWAYS lock to 100% native (1.0f)
-                        // so that all menu text, descriptions, and fonts are 100% pixel-perfect and crystal clear!
-                        // The user-configured resolution scale is applied exclusively during active gameplay.
-                        float targetScale = IsInMenu() ? 1.0f : GetTargetRenderScale();
-
-                        if (Mathf.Abs(urp.renderScale - targetScale) > 0.001f)
-                        {
-                            Plugin.L.LogInfo($"[RenderScale] Applying renderScale: {targetScale:F2} (IsInMenu: {IsInMenu()}, timeScale: {Time.timeScale:F2})");
-                            urp.renderScale = targetScale;
-                        }
-
-                        float targetSharpness = GetTargetFSRSharpness();
-                        // When scale is downscaled or user configured sharpness, use FSR with RCAS edge sharpness
-                        if (targetScale < 0.999f || (Plugin.FSRSharpnessConfig != null && Plugin.FSRSharpnessConfig.Value > 0))
-                        {
-                            if (urp.upscalingFilter != UpscalingFilterSelection.FSR)
-                            {
-                                urp.upscalingFilter = UpscalingFilterSelection.FSR;
-                            }
-                            if (!urp.fsrOverrideSharpness)
-                            {
-                                urp.fsrOverrideSharpness = true;
-                            }
-                            if (Mathf.Abs(urp.fsrSharpness - targetSharpness) > 0.01f)
-                            {
-                                urp.fsrSharpness = targetSharpness;
-                            }
-                        }
-                        else
-                        {
-                            if (urp.upscalingFilter != UpscalingFilterSelection.Auto)
-                            {
-                                urp.upscalingFilter = UpscalingFilterSelection.Auto;
-                            }
-                            if (urp.fsrOverrideSharpness)
-                            {
-                                urp.fsrOverrideSharpness = false;
-                            }
-                        }
-                        if (!urp.useSRPBatcher)
-                        {
-                            urp.useSRPBatcher = true;
-                        }
-                    }
-                }
-            }
-            catch (System.Exception ex)
-            {
-                Plugin.L.LogWarning("ApplyCurrentRenderScale: " + ex.Message);
             }
         }
 

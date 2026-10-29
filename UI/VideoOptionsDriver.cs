@@ -21,7 +21,7 @@ namespace BelmontsCurseMasterOptimizer.UI
 
         private void Update()
         {
-            // 1. Dynamic Zoom Optimization (supports perspective pullback)
+            // 1. Dynamic Zoom Optimization for wide-angle arenas
             CameraZoomPatches.UpdateZoomOptimization();
 
             // 2. Map Screen Black-Screen & Freeze Watchdog
@@ -30,13 +30,7 @@ namespace BelmontsCurseMasterOptimizer.UI
             // 3. Poll asynchronous string table loading after language changes
             VideoOptions.PollPendingLocaleStrings(Time.unscaledDeltaTime);
 
-            // 4. Ensure HUD and popup canvases are decoupled (ScreenSpaceOverlay) for 100% native clarity
-            RenderScaleDecoupler.EnsureCanvasesDecoupled();
-
-            // 5. Zero-Latency RenderScale & UpscalingFilter: Apply user-configured scale (100% to 50% in 5% steps)
-            VideoOptions.ApplyCurrentRenderScale();
-
-            // 6. Periodic engine maintenance every 1 second: upload buffer and GC pacing
+            // 4. Periodic engine maintenance every 1 second: upload buffer and GC pacing
             tweakTimer -= Time.unscaledDeltaTime;
             if (tweakTimer <= 0f)
             {
