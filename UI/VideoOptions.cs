@@ -26,6 +26,27 @@ namespace BelmontsCurseMasterOptimizer.UI
         {
             new VideoOption
             {
+                Path = "video/optimizermenu",
+                Key = "DeckFix_SubMenu",
+                Title = "Master Optimizer",
+                Choices = new (string, string, int)[3]
+                {
+                    ("DeckFix_SubMenu_Std", "Standard Video", 0),
+                    ("DeckFix_SubMenu_Gfx", "Graphics & Display", 1),
+                    ("DeckFix_SubMenu_Sys", "Performance & Engine", 2)
+                },
+                Default = () => (Plugin.OptimizerMenuPageConfig != null) ? Math.Clamp(Plugin.OptimizerMenuPageConfig.Value, 0, 2) : 0,
+                Apply = (int v) =>
+                {
+                    v = Math.Clamp(v, 0, 2);
+                    CurrentPage = v;
+                    if (Plugin.OptimizerMenuPageConfig != null) Plugin.OptimizerMenuPageConfig.Value = v;
+                    Plugin.Instance?.Config.Save();
+                    ApplyMenuVisibility();
+                }
+            },
+            new VideoOption
+            {
                 Path = "video/quality",
                 Key = "DeckFix_Quality",
                 Title = "Graphics Quality",
@@ -232,12 +253,163 @@ namespace BelmontsCurseMasterOptimizer.UI
                     if (Plugin.StutterFixConfig != null) Plugin.StutterFixConfig.Value = StutterAndGCPatches.StutterFixEnabled;
                     Plugin.Instance?.Config.Save();
                 }
+            },
+            new VideoOption
+            {
+                Path = "video/volumetricfog",
+                Key = "DeckFix_VolumetricFog",
+                Title = "Volumetric Fog",
+                Choices = new (string, string, int)[3]
+                {
+                    ("DeckFix_VolFog_Full", "Full (High)", 0),
+                    ("DeckFix_VolFog_Opt", "Optimized", 1),
+                    ("DeckFix_VolFog_Off", "Off", 2)
+                },
+                Default = () => (Plugin.VolumetricFogConfig != null) ? Math.Clamp(Plugin.VolumetricFogConfig.Value, 0, 2) : 1,
+                Apply = (int v) =>
+                {
+                    v = Math.Clamp(v, 0, 2);
+                    VolumetricFogPatches.VolumetricFogMode = v;
+                    VolumetricFogPatches.ApplyToAllActiveLightShafts();
+                    if (Plugin.VolumetricFogConfig != null) Plugin.VolumetricFogConfig.Value = v;
+                    Plugin.Instance?.Config.Save();
+                }
+            },
+            new VideoOption
+            {
+                Path = "video/shaderwarmup",
+                Key = "DeckFix_ShaderWarmup",
+                Title = "Shader Pre-Warm",
+                Choices = new (string, string, int)[2]
+                {
+                    ("DeckFix_ShaderWarm_On", "Enabled", 0),
+                    ("DeckFix_ShaderWarm_Off", "Disabled", 1)
+                },
+                Default = () => (Plugin.ShaderWarmupConfig != null && Plugin.ShaderWarmupConfig.Value) ? 0 : 1,
+                Apply = (int v) =>
+                {
+                    ShaderWarmupPatches.ShaderWarmupEnabled = (v == 0);
+                    if (ShaderWarmupPatches.ShaderWarmupEnabled)
+                    {
+                        ShaderWarmupPatches.WarmupNow("Menu Toggle", force: true);
+                    }
+                    if (Plugin.ShaderWarmupConfig != null) Plugin.ShaderWarmupConfig.Value = ShaderWarmupPatches.ShaderWarmupEnabled;
+                    Plugin.Instance?.Config.Save();
+                }
             }
         };
 
         internal static bool Registered;
         internal static int ReapplyFrames = -1;
         internal static VideoSettings Video;
+
+        internal static int CurrentPage = 0;
+        private static GameObject MenuSelectorRow = null;
+        private static readonly System.Collections.Generic.List<GameObject> VanillaRows = new System.Collections.Generic.List<GameObject>();
+        private static readonly System.Collections.Generic.List<GameObject> GraphicsRows = new System.Collections.Generic.List<GameObject>();
+        private static readonly System.Collections.Generic.List<GameObject> EngineRows = new System.Collections.Generic.List<GameObject>();
+
+        private static readonly System.Collections.Generic.HashSet<string> GraphicsPaths = new System.Collections.Generic.HashSet<string>
+        {
+            "video/quality",
+            "video/renderscale",
+            "video/fsrsharpness",
+            "video/particledensity",
+            "video/fieldofview",
+            "video/volumetricfog"
+        };
+
+        private static readonly System.Collections.Generic.HashSet<string> EnginePaths = new System.Collections.Generic.HashSet<string>
+        {
+            "video/shaderwarmup",
+            "video/waterreflections",
+            "video/fastmap",
+            "video/zoomoptimizer",
+            "video/cpuculling",
+            "video/stutterfix"
+        };
+
+        public static void ApplyMenuVisibility()
+        {
+            try
+            {
+                if (MenuSelectorRow == null) return;
+
+                bool showVanilla = (CurrentPage == 0);
+                bool showGraphics = (CurrentPage == 1);
+                bool showEngine = (CurrentPage == 2);
+
+                for (int i = 0; i < VanillaRows.Count; i++)
+                {
+                    var r = VanillaRows[i];
+                    if (r != null) r.SetActive(showVanilla);
+                }
+
+                for (int i = 0; i < GraphicsRows.Count; i++)
+                {
+                    var r = GraphicsRows[i];
+                    if (r != null) r.SetActive(showGraphics);
+                }
+
+                for (int i = 0; i < EngineRows.Count; i++)
+                {
+                    var r = EngineRows[i];
+                    if (r != null) r.SetActive(showEngine);
+                }
+
+                if (MenuSelectorRow != null)
+                {
+                    MenuSelectorRow.SetActive(true);
+                }
+
+                RebuildNavigation();
+            }
+            catch (System.Exception ex)
+            {
+                Plugin.L?.LogWarning($"[VideoOptions] ApplyMenuVisibility error: {ex.Message}");
+            }
+        }
+
+        public static void RebuildNavigation()
+        {
+            try
+            {
+                if (MenuSelectorRow == null) return;
+
+                VerticalNavigationGroup navGroup = MenuSelectorRow.GetComponentInParent<VerticalNavigationGroup>(true);
+                if (navGroup == null) return;
+
+                Transform parent = MenuSelectorRow.transform.parent;
+                if (parent == null) return;
+
+                var activeSelectables = new System.Collections.Generic.List<UISelectable>();
+                for (int i = 0; i < parent.childCount; i++)
+                {
+                    Transform child = parent.GetChild(i);
+                    if (child != null && child.gameObject != null && child.gameObject.activeSelf)
+                    {
+                        UISelectable sel = child.GetComponent<UISelectable>();
+                        if (sel != null)
+                        {
+                            activeSelectables.Add(sel);
+                        }
+                    }
+                }
+
+                Il2CppReferenceArray<UISelectable> array = new Il2CppReferenceArray<UISelectable>((long)activeSelectables.Count);
+                for (int i = 0; i < activeSelectables.Count; i++)
+                {
+                    ((Il2CppArrayBase<UISelectable>)(object)array)[i] = activeSelectables[i];
+                }
+
+                navGroup.selectables = array;
+                ((UINavigationGroup)navGroup).UpdateNavigation();
+            }
+            catch (System.Exception ex)
+            {
+                Plugin.L?.LogWarning($"[VideoOptions] RebuildNavigation error: {ex.Message}");
+            }
+        }
 
         public static bool IsInMenu()
         {
@@ -252,11 +424,16 @@ namespace BelmontsCurseMasterOptimizer.UI
                     return true;
                 }
 
-                // In active gameplay: Time is running (timeScale > 0) -> ALWAYS return false!
-                // This guarantees 3D resolution scaling is NEVER blocked or locked during gameplay!
-                if (Time.timeScale > 0f)
+                // If the video settings view or its root gameObject is currently active in hierarchy, we are inside settings!
+                if (Video != null && ((Component)Video).gameObject != null && ((Component)Video).gameObject.activeInHierarchy)
                 {
-                    return false;
+                    return true;
+                }
+
+                var vsv = UnityEngine.Object.FindObjectOfType<VideoSettingsView>();
+                if (vsv != null && ((Component)vsv).gameObject != null && ((Component)vsv).gameObject.activeInHierarchy)
+                {
+                    return true;
                 }
 
                 // Lock to 100% native resolution when actively inside the pause menu / settings canvas,
@@ -272,11 +449,11 @@ namespace BelmontsCurseMasterOptimizer.UI
             int index = (Plugin.FSRSharpnessConfig != null) ? Plugin.FSRSharpnessConfig.Value : 3;
             switch (index)
             {
-                case 0: return 0.20f; // Suave (20%)
-                case 1: return 0.40f; // Ligero (40%)
-                case 2: return 0.60f; // Equilibrado (60%)
-                case 4: return 1.00f; // Fuerte (100%)
-                default: return 0.80f; // Nítido (80%, default)
+                case 0: return 0.20f; // Soft (20%)
+                case 1: return 0.40f; // Light (40%)
+                case 2: return 0.60f; // Balanced (60%)
+                case 4: return 1.00f; // Strong (100%)
+                default: return 0.80f; // Sharp (80%, default)
             }
         }
 
@@ -621,30 +798,70 @@ namespace BelmontsCurseMasterOptimizer.UI
                 Plugin.L.LogWarning("Video options: no template row found");
                 return;
             }
+
+            VanillaRows.Clear();
+            GraphicsRows.Clear();
+            EngineRows.Clear();
+
+            var allModPaths = new System.Collections.Generic.HashSet<string>(All.Select(a => a.Path));
+            for (int i = 0; i < componentsInChildren.Length; i++)
+            {
+                var binding = componentsInChildren[i];
+                if (binding != null && ((Component)binding).gameObject != null)
+                {
+                    string path = ((UISettingBinding<EnumSetting, int>)(object)binding).settingPath;
+                    if (!allModPaths.Contains(path))
+                    {
+                        VanillaRows.Add(((Component)binding).gameObject);
+                    }
+                }
+            }
+
             GameObject prevRow = ((Component)val).gameObject;
             foreach (VideoOption opt in All)
             {
                 UIDropdownEnumSettingBinding val3 = ((System.Collections.Generic.IEnumerable<UIDropdownEnumSettingBinding>)componentsInChildren).FirstOrDefault(b => ((UISettingBinding<EnumSetting, int>)(object)b).settingPath == opt.Path);
+                GameObject currentRow;
                 if ((UnityEngine.Object)(object)val3 != (UnityEngine.Object)null)
                 {
-                    prevRow = ((Component)val3).gameObject;
-                    continue;
+                    currentRow = ((Component)val3).gameObject;
                 }
-                GameObject newRow = UnityEngine.Object.Instantiate<GameObject>(((Component)val).gameObject, ((Component)val).transform.parent);
-                ((UnityEngine.Object)newRow).name = "SettingsDisplay_" + opt.Key;
-                newRow.transform.SetSiblingIndex(prevRow.transform.GetSiblingIndex() + 1);
-                UIDropdownEnumSettingBinding component = newRow.GetComponent<UIDropdownEnumSettingBinding>();
-                ((UISettingBinding<EnumSetting, int>)(object)component).settingPath = opt.Path;
-                AddToNavigation(prevRow, newRow);
-                if (late && view._settingEntryViews != null)
+                else
                 {
-                    view._settingEntryViews.Add(((Il2CppObjectBase)component).Cast<IUISetting>());
-                    ((UISettingBinding<EnumSetting, int>)(object)component).BindToSetting();
-                    ((UISettingBinding<EnumSetting, int>)(object)component).RegisterLastSavedValue();
+                    currentRow = UnityEngine.Object.Instantiate<GameObject>(((Component)val).gameObject, ((Component)val).transform.parent);
+                    ((UnityEngine.Object)currentRow).name = "SettingsDisplay_" + opt.Key;
+                    currentRow.transform.SetSiblingIndex(prevRow.transform.GetSiblingIndex() + 1);
+                    UIDropdownEnumSettingBinding component = currentRow.GetComponent<UIDropdownEnumSettingBinding>();
+                    ((UISettingBinding<EnumSetting, int>)(object)component).settingPath = opt.Path;
+                    AddToNavigation(prevRow, currentRow);
+                    if (late && view._settingEntryViews != null)
+                    {
+                        view._settingEntryViews.Add(((Il2CppObjectBase)component).Cast<IUISetting>());
+                        ((UISettingBinding<EnumSetting, int>)(object)component).BindToSetting();
+                        ((UISettingBinding<EnumSetting, int>)(object)component).RegisterLastSavedValue();
+                    }
+                    Plugin.L.LogInfo($"'{opt.Title}' row added to the video settings (late={late})");
                 }
-                prevRow = newRow;
-                Plugin.L.LogInfo($"'{opt.Title}' row added to the video settings (late={late})");
+
+                if (opt.Path == "video/optimizermenu")
+                {
+                    MenuSelectorRow = currentRow;
+                    currentRow.transform.SetSiblingIndex(0); // Pin to the top!
+                }
+                else if (GraphicsPaths.Contains(opt.Path))
+                {
+                    GraphicsRows.Add(currentRow);
+                }
+                else if (EnginePaths.Contains(opt.Path))
+                {
+                    EngineRows.Add(currentRow);
+                }
+
+                prevRow = currentRow;
             }
+
+            CurrentPage = (Plugin.OptimizerMenuPageConfig != null) ? Math.Clamp(Plugin.OptimizerMenuPageConfig.Value, 0, 2) : 0;
+            ApplyMenuVisibility();
         }
 
         private static void AddToNavigation(GameObject previous, GameObject row)

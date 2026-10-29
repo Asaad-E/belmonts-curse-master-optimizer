@@ -80,6 +80,8 @@ namespace BelmontsCurseMasterOptimizer.Patches
             {
                 _inRoomChange = false;
                 ParticlePatches.PruneAndApplyActiveParticles();
+                VolumetricFogPatches.ApplyToAllActiveLightShafts();
+                ShaderWarmupPatches.OnRoomTransition();
             }
             catch {}
         }
