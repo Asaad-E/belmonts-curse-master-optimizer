@@ -490,6 +490,59 @@ namespace BelmontsCurseMasterOptimizer.UI
             AddStrings();
         }
 
+        private static bool _registering;
+        private static bool _registerFailed;
+        private static bool _fallbackSearched;
+        private static bool _applying;
+        private static readonly System.Collections.Generic.List<Il2CppSystem.Action<Setting<int>>> _valueChangedDelegates = new System.Collections.Generic.List<Il2CppSystem.Action<Setting<int>>>();
+
+        /// <summary>Called from VideoSettings / SettingsManager hooks with the live instance; registers once.</summary>
+        internal static void TryRegister(VideoSettings vs)
+        {
+            if (Registered || _registering || _registerFailed || (UnityEngine.Object)(object)vs == (UnityEngine.Object)null)
+            {
+                return;
+            }
+            _registering = true;
+            try
+            {
+                if (((CommonSettings)vs)._enumSettings != null && ((Component)vs).gameObject.scene.IsValid())
+                {
+                    Register(vs);
+                }
+            }
+            catch (Exception ex)
+            {
+                _registerFailed = true;
+                Plugin.L.LogError(ex);
+            }
+            finally
+            {
+                _registering = false;
+            }
+        }
+
+        /// <summary>
+        /// Safety net for a VideoSettings that was enabled before the plugin loaded and never queried since:
+        /// a single search the first time a settings view opens unregistered. Never repeats.
+        /// </summary>
+        internal static void RegisterFallback()
+        {
+            if (Registered || _fallbackSearched)
+            {
+                return;
+            }
+            _fallbackSearched = true;
+            foreach (UnityEngine.Object item in (Il2CppArrayBase<UnityEngine.Object>)(object)Resources.FindObjectsOfTypeAll(Il2CppInterop.Runtime.Il2CppType.Of<VideoSettings>()))
+            {
+                TryRegister(((Il2CppObjectBase)item).Cast<VideoSettings>());
+                if (Registered)
+                {
+                    break;
+                }
+            }
+        }
+
         internal static void Register(VideoSettings vs)
         {
             if (Registered)
@@ -544,6 +597,7 @@ namespace BelmontsCurseMasterOptimizer.UI
                 ((Setting<int>)(object)val).value = configValue;
                 ((Setting<int>)(object)val).Save();
                 item.Setting = val;
+                SubscribeValueChanged((Setting<int>)(object)val);
                 list.Add(val);
                 Plugin.L.LogInfo($"Video option '{item.Title}' registered, value: {item.Choices[Math.Clamp(((Setting<int>)(object)val).value, 0, item.Choices.Length - 1)].text}");
             }
@@ -557,16 +611,42 @@ namespace BelmontsCurseMasterOptimizer.UI
             ApplyAll();
         }
 
+        private static void SubscribeValueChanged(Setting<int> setting)
+        {
+            Il2CppSystem.Action<Setting<int>> callback = (Il2CppSystem.Action<Setting<int>>)new Action<Setting<int>>(_ => ApplyAll());
+            _valueChangedDelegates.Add(callback);
+            Il2CppSystem.Action<Setting<int>> existing = setting.onValueChanged;
+            setting.onValueChanged = existing == null
+                ? callback
+                : Il2CppSystem.Delegate.Combine(existing, callback).Cast<Il2CppSystem.Action<Setting<int>>>();
+        }
+
+        /// <summary>
+        /// Applies every option whose value differs from the last applied one. Idempotent, so it is safe to call
+        /// from onValueChanged and again from the settings view's apply/reset/close hooks.
+        /// </summary>
         internal static void ApplyAll()
         {
-            foreach (VideoOption item in All)
+            if (!Registered || _applying)
             {
-                if (item.Setting != null && ((Setting<int>)(object)item.Setting).value != item.Applied)
+                return;
+            }
+            _applying = true;
+            try
+            {
+                foreach (VideoOption item in All)
                 {
-                    item.Applied = ((Setting<int>)(object)item.Setting).value;
-                    item.Apply(((Setting<int>)(object)item.Setting).value);
-                    Plugin.L.LogInfo($"{item.Title} -> {item.Choices[Math.Clamp(item.Applied, 0, item.Choices.Length - 1)].text}");
+                    if (item.Setting != null && ((Setting<int>)(object)item.Setting).value != item.Applied)
+                    {
+                        item.Applied = ((Setting<int>)(object)item.Setting).value;
+                        item.Apply(((Setting<int>)(object)item.Setting).value);
+                        Plugin.L.LogInfo($"{item.Title} -> {item.Choices[Math.Clamp(item.Applied, 0, item.Choices.Length - 1)].text}");
+                    }
                 }
+            }
+            finally
+            {
+                _applying = false;
             }
         }
 

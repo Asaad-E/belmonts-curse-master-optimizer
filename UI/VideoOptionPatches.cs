@@ -22,6 +22,7 @@ namespace BelmontsCurseMasterOptimizer.UI
             }
             try
             {
+                VideoOptions.RegisterFallback();
                 VideoOptions.AddRows(__instance);
             }
             catch (Exception ex)
@@ -36,6 +37,7 @@ namespace BelmontsCurseMasterOptimizer.UI
         {
             try
             {
+                VideoOptions.RegisterFallback();
                 VideoOptions.AddRows(__instance);
             }
             catch (Exception ex)
@@ -62,16 +64,75 @@ namespace BelmontsCurseMasterOptimizer.UI
             }
         }
 
+        // Safety net for option changes that did not raise onValueChanged: re-check when the view applies,
+        // resets, discards or closes. ApplyAll only acts on values that actually changed.
         [HarmonyPatch(typeof(SettingsViewBase), "OnDisable")]
         [HarmonyPostfix]
         private static void AfterViewDisable()
         {
+            SafeApplyAll();
+        }
+
+        [HarmonyPatch(typeof(SettingsViewBase), "ApplyChanges")]
+        [HarmonyPostfix]
+        private static void AfterViewApplyChanges()
+        {
+            SafeApplyAll();
+        }
+
+        [HarmonyPatch(typeof(SettingsViewBase), "ResetSettings")]
+        [HarmonyPostfix]
+        private static void AfterViewResetSettings()
+        {
+            SafeApplyAll();
+        }
+
+        [HarmonyPatch(typeof(SettingsViewBase), "DiscardChanges")]
+        [HarmonyPostfix]
+        private static void AfterViewDiscardChanges()
+        {
+            SafeApplyAll();
+        }
+
+        private static void SafeApplyAll()
+        {
+            try
+            {
+                VideoOptions.ApplyAll();
+            }
+            catch (Exception ex)
+            {
+                Plugin.L.LogError(ex);
+            }
+        }
+
+        // Registration: every call the game makes into its settings hands us the live VideoSettings.
+        [HarmonyPatch(typeof(VideoSettings), "OnEnable")]
+        [HarmonyPostfix]
+        private static void AfterVideoEnable(VideoSettings __instance)
+        {
+            VideoOptions.TryRegister(__instance);
+        }
+
+        [HarmonyPatch(typeof(VideoSettings), "Load")]
+        [HarmonyPostfix]
+        private static void AfterVideoLoad(VideoSettings __instance)
+        {
+            VideoOptions.TryRegister(__instance);
+        }
+
+        [HarmonyPatch(typeof(SettingsManager), "Load")]
+        [HarmonyPostfix]
+        private static void AfterManagerLoad(SettingsManager __instance)
+        {
+            if (!VideoOptions.Registered) VideoOptions.TryRegister(__instance._videoSettings);
         }
 
         [HarmonyPatch(typeof(VideoSettings), "IsSettingActive")]
         [HarmonyPostfix]
-        private static void VideoIsActive(string settingPath, ref bool __result)
+        private static void VideoIsActive(VideoSettings __instance, string settingPath, ref bool __result)
         {
+            VideoOptions.TryRegister(__instance);
             if (VideoOptions.Find(settingPath) != null)
             {
                 __result = true;
@@ -80,8 +141,9 @@ namespace BelmontsCurseMasterOptimizer.UI
 
         [HarmonyPatch(typeof(SettingsManager), "IsSettingActive")]
         [HarmonyPostfix]
-        private static void ManagerIsActive(string settingPath, ref bool __result)
+        private static void ManagerIsActive(SettingsManager __instance, string settingPath, ref bool __result)
         {
+            if (!VideoOptions.Registered) VideoOptions.TryRegister(__instance._videoSettings);
             if (VideoOptions.Find(settingPath) != null)
             {
                 __result = true;
@@ -90,8 +152,9 @@ namespace BelmontsCurseMasterOptimizer.UI
 
         [HarmonyPatch(typeof(VideoSettings), "TryGetEnumSetting")]
         [HarmonyPostfix]
-        private static void VideoTryGet(string path, ref EnumSetting setting, ref bool __result)
+        private static void VideoTryGet(VideoSettings __instance, string path, ref EnumSetting setting, ref bool __result)
         {
+            VideoOptions.TryRegister(__instance);
             VideoOption videoOption = (__result ? null : VideoOptions.Find(path));
             if (videoOption != null)
             {
@@ -102,8 +165,9 @@ namespace BelmontsCurseMasterOptimizer.UI
 
         [HarmonyPatch(typeof(SettingsManager), "TryGetEnumSetting")]
         [HarmonyPostfix]
-        private static void ManagerTryGet(string path, ref EnumSetting value, ref bool __result)
+        private static void ManagerTryGet(SettingsManager __instance, string path, ref EnumSetting value, ref bool __result)
         {
+            if (!VideoOptions.Registered) VideoOptions.TryRegister(__instance._videoSettings);
             VideoOption videoOption = (__result ? null : VideoOptions.Find(path));
             if (videoOption != null)
             {
