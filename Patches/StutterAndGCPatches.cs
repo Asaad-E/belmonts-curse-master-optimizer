@@ -110,7 +110,6 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPrefix]
         public static bool BeforeGCCollect()
         {
-            MapPerf.Note("GC.Collect requested");
             if (!StutterFixEnabled) return true;
 
             try
@@ -157,7 +156,6 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPrefix]
         public static bool BeforeLevelStateLogicRunGC()
         {
-            MapPerf.Note("LevelStateLogic.RunGC");
             if (!StutterFixEnabled) return true;
 
             try
@@ -195,7 +193,6 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPrefix]
         public static bool BeforeUnload(ref AsyncOperation __result, out bool __state)
         {
-            MapPerf.Note("Resources.UnloadUnusedAssets");
             __state = false;
             if (!StutterFixEnabled)
             {

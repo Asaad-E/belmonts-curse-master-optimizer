@@ -9,7 +9,7 @@ Every optimization is fully configurable live in-game through the native **Setti
 ## Why Use This Mod?
 
 While *Castlevania: Belmont's Curse* is an incredible retro-modern experience, the vanilla game suffers from several technical hitches that break immersion:
-- Opening the map causes frame drops, and closing it triggers an annoying **~2-second freeze**.
+- The map screen redraws a full-resolution 3D map every frame, dropping the framerate below 30 FPS while it is open.
 - Moving between rooms frequently causes micro-stutters due to synchronous memory cleanups.
 - Wide-angle camera zoom-outs in scenic vistas and boss arenas tank the framerate.
 - Planar water reflections can look jittery or choppy during movement.
@@ -20,9 +20,9 @@ While *Castlevania: Belmont's Curse* is an incredible retro-modern experience, t
 
 ## Key Features
 
-### Instant, Zero-Lag Map Navigation
-- **The Problem:** Opening the map renders the entire 3D world behind it (dropping FPS), and closing the map freezes the game for ~2 seconds while unloading scene data.
-- **The Fix:** Caches map scenes in memory so opening and closing is instantaneous (<1 ms) with zero recovery lag, optimizes map render cameras, and preserves the native background blur without blue/black screen artifacts.
+### Faster Map Screen
+- **The Problem:** While the map is open, the game redraws the whole 3D level map into a 1920x1080 texture every single frame, even when nothing on the map is moving. In testing this alone took the map screen from 60 FPS to below 30 FPS.
+- **The Fix:** **Map Refresh Rate** redraws the map only as often as needed. **Smart** (default) redraws it whenever the cursor, camera or zoom moves and every 4th frame otherwise; **Eco** redraws it every 4th frame while moving and every 8th at rest. The map keeps showing its last image in between. Map cameras also skip shadows, post-processing and HDR, and map transitions are shortened.
 
 ### Smooth 60 FPS Water Reflections
 - **The Problem:** Frame-skipping water reflections cause distracting jitter and sliding artifacts as the camera moves.
@@ -36,17 +36,16 @@ While *Castlevania: Belmont's Curse* is an incredible retro-modern experience, t
 - **The Problem:** Running between rooms and hitting checkpoints triggers harsh garbage collection freezes (40–120 ms pauses).
 - **The Fix:** Converts blocking garbage collections into smooth background incremental slices (3 ms), expands asset upload streaming buffers, and clamps physics catch-up loops to eliminate exploration hitching.
 
-### Global CPU Optimization & Battery Savings
-- **The Problem:** Unseen enemies and animated props running complex skeletal calculations off-screen waste CPU cycles and drain handheld battery.
-- **The Fix:** Intelligently pauses bone transform calculations for off-screen enemies and enables the SRP Batcher engine-wide, significantly reducing CPU draw overhead and extending battery life on the Steam Deck.
+### Optional Particle Density Limit
+- **The Problem:** Effect-heavy rooms can cost a lot on handheld GPUs.
+- **The Fix:** **Particle Density** lowers particle counts to 80% or 60%. Each effect keeps its own emission curve, every changed value is restored exactly when you return to 100%, and the work is spread over a few frames after entering a room so doorways stay smooth. At 100% (default) particles are untouched.
 
-### Razor-Sharp Text & UI (Zero Blurriness Guarantee)
-- **The Problem:** Aggressive resolution downscaling can make dialogue text, damage numbers, and menu fonts blurry and soft.
-- **The Fix:** Strictly locks resolution scale to 1.0 (100% native pixel-sharp rendering) on Medium and High quality presets. Dialogue, UI, and TextMeshPro font elements remain crisp and clean at all times.
+### Native Image Sharpness
+- The mod never changes the render resolution: the game, HUD, text and menus always render at your display resolution.
 
 ### Native In-Game Settings Menu
 - **The Problem:** Having to edit configuration files or restart the game to tweak settings.
-- **The Fix:** Adds clean, native options directly inside the game's **Settings > Video** menu with full gamepad D-pad and analog stick navigation. Any setting changed in-game is saved automatically.
+- **The Fix:** Adds clean, native options directly inside the game's **Settings > Video** menu with full gamepad D-pad and analog stick navigation. A **Settings Page** selector at the top splits the list into the game's own options and the optimizer's Graphics and Performance pages, so the menu always fits on screen. Any setting changed in-game is saved automatically.
 
 ### 16:10 Aspect Ratio Fix for Steam Deck
 - **The Problem:** On 16:10 displays like the Steam Deck, the pause menu camera gets cropped or zoomed in awkwardly.
@@ -60,14 +59,17 @@ Once installed, open **Settings > Video** to configure:
 
 | Setting | Options | Description |
 | :--- | :--- | :--- |
-| **Max FPS** | 30 / 40 / 45 / 60 / 120 / Unlimited | Target framerate limit. Includes dedicated 40 FPS and 45 FPS modes for Steam Deck. |
-| **Graphics Quality** | Low / Medium / High | Overall graphics quality and asset fidelity. |
-| **3D Resolution Scale** | 100% to 70% (5% steps) | Independent 3D scene resolution scale during gameplay. Automatically locked to 100% in all menus for crystal-clear text. |
-| **Water Reflections** | Optimized (60 FPS) / Frame-Skip / Off | Silky smooth 60 FPS reflection, legacy frame-skip, or completely off for battery savings. |
-| **Fast Map Screen** | Enabled / Disabled | Eliminates the 2-second map close freeze and optimizes map rendering cameras. |
-| **Wide View Optimizer** | Enabled / Disabled | Automatically scales shadow distance during wide camera zoom-outs. |
-| **Off-Screen CPU Culling** | Enabled / Disabled | Culls off-screen non-combat prop bone transform updates to reduce CPU usage. |
-| **Stutter & Traversal Fix** | Enabled / Disabled | Incremental background GC and expanded streaming buffers for hitch-free exploration. |
+| Page | Setting | Options | Description |
+| :--- | :--- | :--- | :--- |
+| Top | **Settings Page** | Standard Video / Optimizer: Graphics / Optimizer: Performance | Chooses which group of options is shown. |
+| Standard Video | **Max FPS** | 30 / 40 / 45 / 60 / 120 / Unlimited | Game framerate limit, with added 40 FPS and 45 FPS modes for Steam Deck. |
+| Graphics | **Graphics Quality** | Low / Medium / High | Overall graphics quality and asset fidelity. |
+| Graphics | **Particle Density** | 100% / 80% / 60% | Optional particle limit; 100% leaves particles untouched. |
+| Graphics | **Water Reflections** | Optimized (60 FPS) / Frame-Skip / Off | Smooth reflections, legacy frame-skip, or off for battery savings. |
+| Performance | **Fast Map Screen** | Enabled / Disabled | Optimized map cameras and shorter map transitions. |
+| Performance | **Map Refresh Rate** | Every frame / Half rate / Smart / Eco | How often the level map is redrawn while the map screen is open. |
+| Performance | **Wide View Optimizer** | Enabled / Disabled | Automatically scales shadow distance during wide camera zoom-outs. |
+| Performance | **Stutter & Traversal Fix** | Enabled / Disabled | Incremental background GC and expanded streaming buffers for hitch-free exploration. |
 
 ---
 

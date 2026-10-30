@@ -64,7 +64,7 @@ namespace BelmontsCurseMasterOptimizer
             MapRefreshConfig = Config.Bind<int>(
                 "Performance",
                 "MapRefresh",
-                0,
+                2,
                 new ConfigDescription("How often the level map is redrawn while open: 0 = every frame (game default), 1 = half rate, 2 = smart (when the cursor, camera or zoom moves, otherwise every 4th frame), 3 = eco (every 4th frame while moving, every 8th at rest)", new AcceptableValueRange<int>(0, 3))
             );
 
@@ -137,15 +137,6 @@ namespace BelmontsCurseMasterOptimizer
             SafePatch(typeof(CullingAndCPUPatches), "CullingAndCPUPatches");
             SafePatch(typeof(VideoOptionPatches), "VideoOptionPatches");
             SafePatch(typeof(ParticlePatches), "ParticlePatches");
-
-            try
-            {
-                MapPerf.Init();
-            }
-            catch (Exception ex)
-            {
-                L.LogWarning("[MapPerf] Init failed: " + ex.Message);
-            }
 
             Config.Save();
             L.LogInfo("Belmont's Curse Master Optimizer v1.3.0 successfully loaded!");

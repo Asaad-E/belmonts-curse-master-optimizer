@@ -26,7 +26,6 @@ namespace BelmontsCurseMasterOptimizer.UI
 
             // 2. Map Screen Black-Screen & Freeze Watchdog
             MapPatches.FailsafeCameraWatchdog();
-            MapPerf.Tick();
             MapPatches.MapRefreshTick();
             ParticlePatches.Tick();
 

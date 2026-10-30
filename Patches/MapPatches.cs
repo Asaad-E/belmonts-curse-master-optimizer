@@ -127,7 +127,6 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null && cam.cullingMask == 0)
                 {
                     cam.cullingMask = -1 & ~(1 << 5);
-                    MapPerf.Note("watchdog re-enabled world camera (game had set cullingMask 0)");
                 }
             }
             catch {}
@@ -170,19 +169,6 @@ namespace BelmontsCurseMasterOptimizer.Patches
         public static void AfterOpenMap(UIMapManager __instance)
         {
             IsMapOpen = true;
-            MapPerf.Begin("open map");
-            try
-            {
-                var lm = (UnityEngine.Object)(object)__instance != (UnityEngine.Object)null ? __instance.levelManager : null;
-                if ((UnityEngine.Object)(object)lm != (UnityEngine.Object)null)
-                {
-                    MapPerf.Note($"state: gamePreloaded={lm.HOTFIX_Preloaded()} cached={(lm._preLoadedMaps != null ? lm._preLoadedMaps.Count : -1)} delayRefresh={lm.delayLevelMapRefreshOnOpen}");
-                }
-            }
-            catch (Exception ex)
-            {
-                MapPerf.Note("state error: " + ex.Message);
-            }
             if (!FastMapEnabled) return;
 
             try
@@ -205,7 +191,6 @@ namespace BelmontsCurseMasterOptimizer.Patches
         public static void AfterOnMapClosed()
         {
             IsMapOpen = false;
-            MapPerf.Begin("close map");
         }
 
         [HarmonyPatch(typeof(GameMenuManager), "OnMenuOpen")]
@@ -219,7 +204,6 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPostfix]
         public static void AfterOpenOnMap(GameMenuManager __instance)
         {
-            MapPerf.Begin("menu opened on map");
             IsMapOpen = true;
             _activeGameMenuManager = __instance;
         }
@@ -228,7 +212,6 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPostfix]
         public static void AfterGameMenuClose()
         {
-            MapPerf.Note("menu closed");
             IsMapOpen = false;
             _activeGameMenuManager = null;
         }
@@ -345,7 +328,6 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPostfix]
         public static void AfterRoomEnter()
         {
-            MapPerf.Begin("room entered (gameplay baseline)");
             RestoreWorldCamera();
         }
 
@@ -414,43 +396,6 @@ namespace BelmontsCurseMasterOptimizer.Patches
             }
             return true;
         }
-
-        [HarmonyPatch(typeof(UIMapLevelManager), "GetLevelMapOpeningType")]
-        [HarmonyPostfix]
-        public static void AfterGetLevelMapOpeningType(UIMapLevelManager.LevelMapSceneOpeningType __result)
-        {
-            MapPerf.Note("opening type " + __result);
-        }
-
-        // --- Measurement only: what the game does while the map opens and closes ---
-
-        [HarmonyPatch(typeof(UIMapLevelManager), "LoadMapScene")]
-        [HarmonyPrefix]
-        public static void NoteLoadMapScene() => MapPerf.Note("LoadMapScene (map scene loaded from disk)");
-
-        [HarmonyPatch(typeof(UIMapLevelManager), "OnLoadLevelMapCompleted")]
-        [HarmonyPrefix]
-        public static void NoteLoadCompleted() => MapPerf.Note("map scene load completed");
-
-        [HarmonyPatch(typeof(UIMapLevelManager), "ActivatePreLoadedMap")]
-        [HarmonyPrefix]
-        public static void NoteActivatePreLoaded() => MapPerf.Note("ActivatePreLoadedMap");
-
-        [HarmonyPatch(typeof(UIMapLevelManager), "OnOpenLevelMapCompleted")]
-        [HarmonyPrefix]
-        public static void NoteOpenCompleted() => MapPerf.Note("open completed");
-
-        [HarmonyPatch(typeof(UIMapLevelManager), "UnloadCurrentMapScene")]
-        [HarmonyPrefix]
-        public static void NoteUnloadScene() => MapPerf.Note("UnloadCurrentMapScene");
-
-        [HarmonyPatch(typeof(UIMapLevelManager), "DeactivateCurrentPreLoadedMap")]
-        [HarmonyPrefix]
-        public static void NoteDeactivatePreLoaded() => MapPerf.Note("DeactivateCurrentPreLoadedMap");
-
-        [HarmonyPatch(typeof(UIMapLevelManager), "OnCloseLevelMapCompleted")]
-        [HarmonyPrefix]
-        public static void NoteCloseCompleted() => MapPerf.Note("close completed");
 
         [HarmonyPatch(typeof(UIMapLevelManager), "CloseCurrentMapInternal")]
         [HarmonyPrefix]
@@ -533,7 +478,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
                         lvlMgr._currentSceneOpeningType = UIMapLevelManager.LevelMapSceneOpeningType.LoadScene;
                         _activeLevelManager = null;
                         _activeMapManager = null;
-                        Plugin.L.LogInfo($"[Map] Purged and unloaded stale _preLoadedMaps on level change (gamePreloaded={lvlMgr.HOTFIX_Preloaded()}).");
+                        Plugin.L.LogInfo("[Map] Purged and unloaded stale _preLoadedMaps on level change.");
                     }
                 }
             }
