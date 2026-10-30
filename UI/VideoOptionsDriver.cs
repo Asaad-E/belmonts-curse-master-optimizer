@@ -28,6 +28,7 @@ namespace BelmontsCurseMasterOptimizer.UI
             MapPatches.FailsafeCameraWatchdog();
             MapPerf.Tick();
             MapPatches.MapRefreshTick();
+            ParticlePatches.Tick();
 
             // 3. Poll asynchronous string table loading after language changes
             VideoOptions.PollPendingLocaleStrings(Time.unscaledDeltaTime);

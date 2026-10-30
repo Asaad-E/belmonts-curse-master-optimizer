@@ -55,6 +55,25 @@ namespace BelmontsCurseMasterOptimizer.UI
             },
             new VideoOption
             {
+                Path = "video/particledensity",
+                Key = "DeckFix_ParticleDensity",
+                Title = "Particle Density",
+                Choices = new (string, string, int)[3]
+                {
+                    ("DeckFix_Particles_100", "100% (Full)", 0),
+                    ("DeckFix_Particles_60", "60%", 1),
+                    ("DeckFix_Particles_30", "30%", 2)
+                },
+                Default = () => Plugin.ParticleDensityConfig != null ? Math.Clamp(Plugin.ParticleDensityConfig.Value, 0, 2) : 0,
+                Apply = (int v) =>
+                {
+                    if (Plugin.ParticleDensityConfig != null) Plugin.ParticleDensityConfig.Value = Math.Clamp(v, 0, 2);
+                    Plugin.Instance?.Config.Save();
+                    ParticlePatches.OnSettingChanged();
+                }
+            },
+            new VideoOption
+            {
                 Path = "video/waterreflections",
                 Key = "DeckFix_Reflections",
                 Title = "Water Reflections",

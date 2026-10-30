@@ -20,6 +20,7 @@ namespace BelmontsCurseMasterOptimizer
 
         internal static ConfigEntry<int> QualityPresetConfig;
         internal static ConfigEntry<int> ReflectionModeConfig;
+        internal static ConfigEntry<int> ParticleDensityConfig;
         internal static ConfigEntry<bool> FastMapConfig;
         internal static ConfigEntry<int> MapRefreshConfig;
         internal static ConfigEntry<bool> ZoomOptimizerConfig;
@@ -37,6 +38,13 @@ namespace BelmontsCurseMasterOptimizer
                 "QualityPreset",
                 2,
                 new ConfigDescription("Graphics quality preset: 0 = Low, 1 = Medium, 2 = High", new AcceptableValueRange<int>(0, 2))
+            );
+
+            ParticleDensityConfig = Config.Bind<int>(
+                "Graphics",
+                "ParticleDensityLimit",
+                0,
+                new ConfigDescription("Particle density: 0 = 100% (game default, untouched), 1 = 60%, 2 = 30%", new AcceptableValueRange<int>(0, 2))
             );
 
             ReflectionModeConfig = Config.Bind<int>(
@@ -129,6 +137,7 @@ namespace BelmontsCurseMasterOptimizer
             SafePatch(typeof(StutterAndGCPatches), "StutterAndGCPatches");
             SafePatch(typeof(CullingAndCPUPatches), "CullingAndCPUPatches");
             SafePatch(typeof(VideoOptionPatches), "VideoOptionPatches");
+            SafePatch(typeof(ParticlePatches), "ParticlePatches");
 
             try
             {
