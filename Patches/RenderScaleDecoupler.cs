@@ -31,6 +31,8 @@ namespace BelmontsCurseMasterOptimizer.Patches
         private static UniversalRenderPipelineAsset _asset;
         private static IntPtr _assetPtr;
         private static bool _assetDirty = true;
+        private static bool _upscalerPending = true;
+        private static int _nextAssetCheck;
         private static int _scaleOffset = -1;
         private static float _gameScale = 1f; // the value the game believes the asset holds
 
@@ -64,6 +66,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 else
                 {
                     _assetDirty = true;
+                    _upscalerPending = true;
                 }
             }
             if (_active && !_assetDirty)
@@ -91,6 +94,12 @@ namespace BelmontsCurseMasterOptimizer.Patches
             if (!_active)
             {
                 return;
+            }
+            // The game swaps the pipeline asset on its own (e.g. after loading a save), so re-check it twice a second.
+            if (Time.frameCount >= _nextAssetCheck)
+            {
+                _nextAssetCheck = Time.frameCount + 30;
+                _assetDirty = true;
             }
             if (_assetDirty && !RefreshAsset())
             {
@@ -151,9 +160,14 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 _asset = urp;
                 _assetPtr = urp.Pointer;
                 _gameScale = ReadScale();
+                _upscalerPending = true;
                 Plugin.L?.LogInfo($"[RenderScale] Tracking URP asset '{urp.name}' (game scale {_gameScale:0.00})");
             }
-            ApplyUpscaler();
+            if (_upscalerPending)
+            {
+                _upscalerPending = false;
+                ApplyUpscaler();
+            }
             return true;
         }
 
