@@ -94,6 +94,8 @@ namespace BelmontsCurseMasterOptimizer.Patches
             }
         }
 
+        private static GameMenuManager _activeGameMenuManager = null;
+
         public static bool IsGameMenuOpen
         {
             get
