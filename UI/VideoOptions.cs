@@ -26,6 +26,26 @@ namespace BelmontsCurseMasterOptimizer.UI
         {
             new VideoOption
             {
+                Path = "video/optimizermenu",
+                Key = "DeckFix_SubMenu",
+                Title = "Settings Page",
+                Choices = new (string, string, int)[3]
+                {
+                    ("DeckFix_SubMenu_Std", "Standard Video", 0),
+                    ("DeckFix_SubMenu_Gfx", "Optimizer: Graphics", 1),
+                    ("DeckFix_SubMenu_Sys", "Optimizer: Performance", 2)
+                },
+                Default = () => Plugin.OptimizerMenuPageConfig != null ? Math.Clamp(Plugin.OptimizerMenuPageConfig.Value, 0, 2) : 0,
+                Apply = (int v) =>
+                {
+                    CurrentPage = Math.Clamp(v, 0, 2);
+                    if (Plugin.OptimizerMenuPageConfig != null) Plugin.OptimizerMenuPageConfig.Value = CurrentPage;
+                    Plugin.Instance?.Config.Save();
+                    ApplyMenuVisibility();
+                }
+            },
+            new VideoOption
+            {
                 Path = "video/quality",
                 Key = "DeckFix_Quality",
                 Title = "Graphics Quality",
@@ -61,8 +81,8 @@ namespace BelmontsCurseMasterOptimizer.UI
                 Choices = new (string, string, int)[3]
                 {
                     ("DeckFix_Particles_100", "100% (Full)", 0),
-                    ("DeckFix_Particles_60", "60%", 1),
-                    ("DeckFix_Particles_30", "30%", 2)
+                    ("DeckFix_Particles_80", "80%", 1),
+                    ("DeckFix_Particles_60", "60%", 2)
                 },
                 Default = () => Plugin.ParticleDensityConfig != null ? Math.Clamp(Plugin.ParticleDensityConfig.Value, 0, 2) : 0,
                 Apply = (int v) =>
@@ -149,24 +169,6 @@ namespace BelmontsCurseMasterOptimizer.UI
             },
             new VideoOption
             {
-                Path = "video/cpuculling",
-                Key = "DeckFix_CpuCulling",
-                Title = "Off-Screen CPU Culling",
-                Choices = new (string, string, int)[2]
-                {
-                    ("DeckFix_Culling_On", "Enabled", 0),
-                    ("DeckFix_Culling_Off", "Disabled", 1)
-                },
-                Default = () => Plugin.CpuCullingConfig.Value ? 0 : 1,
-                Apply = (int v) =>
-                {
-                    CullingAndCPUPatches.CpuCullingEnabled = (v == 0);
-                    if (Plugin.CpuCullingConfig != null) Plugin.CpuCullingConfig.Value = CullingAndCPUPatches.CpuCullingEnabled;
-                    Plugin.Instance?.Config.Save();
-                }
-            },
-            new VideoOption
-            {
                 Path = "video/stutterfix",
                 Key = "DeckFix_StutterFix",
                 Title = "Stutter & Traversal Fix",
@@ -188,6 +190,91 @@ namespace BelmontsCurseMasterOptimizer.UI
         internal static bool Registered;
         internal static int ReapplyFrames = -1;
         internal static VideoSettings Video;
+
+        // The video settings list is split in pages so it fits on screen: the game's own rows, then the
+        // optimizer's graphics rows, then its performance rows. The page selector row stays on top.
+        internal static int CurrentPage;
+        private static GameObject _pageSelectorRow;
+        private static readonly System.Collections.Generic.List<GameObject> GraphicsRows = new System.Collections.Generic.List<GameObject>();
+        private static readonly System.Collections.Generic.List<GameObject> EngineRows = new System.Collections.Generic.List<GameObject>();
+        private static readonly System.Collections.Generic.List<GameObject> VanillaRows = new System.Collections.Generic.List<GameObject>();
+        // Whether the game had each of its rows shown when we first saw it, so page 0 restores exactly that.
+        private static readonly System.Collections.Generic.Dictionary<int, bool> VanillaShown = new System.Collections.Generic.Dictionary<int, bool>();
+
+        private static readonly System.Collections.Generic.HashSet<string> GraphicsPaths = new System.Collections.Generic.HashSet<string>
+        {
+            "video/quality",
+            "video/particledensity",
+            "video/waterreflections"
+        };
+
+        public static void ApplyMenuVisibility()
+        {
+            try
+            {
+                if ((UnityEngine.Object)(object)_pageSelectorRow == (UnityEngine.Object)null)
+                {
+                    return;
+                }
+                foreach (GameObject r in VanillaRows)
+                {
+                    if ((UnityEngine.Object)(object)r != (UnityEngine.Object)null)
+                    {
+                        r.SetActive(CurrentPage == 0 && VanillaShown.TryGetValue(r.GetInstanceID(), out bool shown) && shown);
+                    }
+                }
+                foreach (GameObject r in GraphicsRows)
+                {
+                    if ((UnityEngine.Object)(object)r != (UnityEngine.Object)null)
+                    {
+                        r.SetActive(CurrentPage == 1);
+                    }
+                }
+                foreach (GameObject r in EngineRows)
+                {
+                    if ((UnityEngine.Object)(object)r != (UnityEngine.Object)null)
+                    {
+                        r.SetActive(CurrentPage == 2);
+                    }
+                }
+                _pageSelectorRow.SetActive(true);
+                RebuildNavigation();
+            }
+            catch (Exception ex)
+            {
+                Plugin.L?.LogWarning("[VideoOptions] ApplyMenuVisibility error: " + ex.Message);
+            }
+        }
+
+        private static void RebuildNavigation()
+        {
+            VerticalNavigationGroup navGroup = _pageSelectorRow.GetComponentInParent<VerticalNavigationGroup>(true);
+            Transform parent = _pageSelectorRow.transform.parent;
+            if ((UnityEngine.Object)(object)navGroup == (UnityEngine.Object)null || (UnityEngine.Object)(object)parent == (UnityEngine.Object)null)
+            {
+                return;
+            }
+            var selectables = new System.Collections.Generic.List<UISelectable>();
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                Transform child = parent.GetChild(i);
+                if ((UnityEngine.Object)(object)child != (UnityEngine.Object)null && child.gameObject.activeSelf)
+                {
+                    UISelectable sel = child.GetComponent<UISelectable>();
+                    if ((UnityEngine.Object)(object)sel != (UnityEngine.Object)null)
+                    {
+                        selectables.Add(sel);
+                    }
+                }
+            }
+            var array = new Il2CppReferenceArray<UISelectable>((long)selectables.Count);
+            for (int i = 0; i < selectables.Count; i++)
+            {
+                ((Il2CppArrayBase<UISelectable>)(object)array)[i] = selectables[i];
+            }
+            navGroup.selectables = array;
+            ((UINavigationGroup)navGroup).UpdateNavigation();
+        }
 
         internal static void ReapplyGameFrameSettings()
         {
@@ -461,30 +548,73 @@ namespace BelmontsCurseMasterOptimizer.UI
                 Plugin.L.LogWarning("Video options: no template row found");
                 return;
             }
+            GraphicsRows.Clear();
+            EngineRows.Clear();
+            var modRows = new System.Collections.Generic.HashSet<int>();
+
             GameObject prevRow = ((Component)val).gameObject;
             foreach (VideoOption opt in All)
             {
                 UIDropdownEnumSettingBinding val3 = ((System.Collections.Generic.IEnumerable<UIDropdownEnumSettingBinding>)componentsInChildren).FirstOrDefault(b => ((UISettingBinding<EnumSetting, int>)(object)b).settingPath == opt.Path);
+                GameObject row;
                 if ((UnityEngine.Object)(object)val3 != (UnityEngine.Object)null)
                 {
-                    prevRow = ((Component)val3).gameObject;
+                    row = ((Component)val3).gameObject;
+                }
+                else
+                {
+                    row = UnityEngine.Object.Instantiate<GameObject>(((Component)val).gameObject, ((Component)val).transform.parent);
+                    ((UnityEngine.Object)row).name = "SettingsDisplay_" + opt.Key;
+                    row.transform.SetSiblingIndex(prevRow.transform.GetSiblingIndex() + 1);
+                    UIDropdownEnumSettingBinding component = row.GetComponent<UIDropdownEnumSettingBinding>();
+                    ((UISettingBinding<EnumSetting, int>)(object)component).settingPath = opt.Path;
+                    AddToNavigation(prevRow, row);
+                    if (late && view._settingEntryViews != null)
+                    {
+                        view._settingEntryViews.Add(((Il2CppObjectBase)component).Cast<IUISetting>());
+                        ((UISettingBinding<EnumSetting, int>)(object)component).BindToSetting();
+                        ((UISettingBinding<EnumSetting, int>)(object)component).RegisterLastSavedValue();
+                    }
+                    Plugin.L.LogInfo($"'{opt.Title}' row added to the video settings (late={late})");
+                }
+                modRows.Add(row.GetInstanceID());
+
+                if (opt.Path == "video/optimizermenu")
+                {
+                    _pageSelectorRow = row;
+                    row.transform.SetSiblingIndex(0);
+                }
+                else if (GraphicsPaths.Contains(opt.Path))
+                {
+                    GraphicsRows.Add(row);
+                }
+                else
+                {
+                    EngineRows.Add(row);
+                }
+                prevRow = row;
+            }
+
+            // Every other row under the same list belongs to the game (dropdowns, toggles, sliders).
+            VanillaRows.Clear();
+            Transform list = ((Component)val).transform.parent;
+            for (int i = 0; i < list.childCount; i++)
+            {
+                GameObject child = list.GetChild(i).gameObject;
+                int id = child.GetInstanceID();
+                if (modRows.Contains(id))
+                {
                     continue;
                 }
-                GameObject newRow = UnityEngine.Object.Instantiate<GameObject>(((Component)val).gameObject, ((Component)val).transform.parent);
-                ((UnityEngine.Object)newRow).name = "SettingsDisplay_" + opt.Key;
-                newRow.transform.SetSiblingIndex(prevRow.transform.GetSiblingIndex() + 1);
-                UIDropdownEnumSettingBinding component = newRow.GetComponent<UIDropdownEnumSettingBinding>();
-                ((UISettingBinding<EnumSetting, int>)(object)component).settingPath = opt.Path;
-                AddToNavigation(prevRow, newRow);
-                if (late && view._settingEntryViews != null)
+                VanillaRows.Add(child);
+                if (!VanillaShown.ContainsKey(id))
                 {
-                    view._settingEntryViews.Add(((Il2CppObjectBase)component).Cast<IUISetting>());
-                    ((UISettingBinding<EnumSetting, int>)(object)component).BindToSetting();
-                    ((UISettingBinding<EnumSetting, int>)(object)component).RegisterLastSavedValue();
+                    VanillaShown[id] = child.activeSelf;
                 }
-                prevRow = newRow;
-                Plugin.L.LogInfo($"'{opt.Title}' row added to the video settings (late={late})");
             }
+
+            CurrentPage = Plugin.OptimizerMenuPageConfig != null ? Math.Clamp(Plugin.OptimizerMenuPageConfig.Value, 0, 2) : 0;
+            ApplyMenuVisibility();
         }
 
         private static void AddToNavigation(GameObject previous, GameObject row)

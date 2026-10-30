@@ -24,7 +24,7 @@ namespace BelmontsCurseMasterOptimizer
         internal static ConfigEntry<bool> FastMapConfig;
         internal static ConfigEntry<int> MapRefreshConfig;
         internal static ConfigEntry<bool> ZoomOptimizerConfig;
-        internal static ConfigEntry<bool> CpuCullingConfig;
+        internal static ConfigEntry<int> OptimizerMenuPageConfig;
         internal static ConfigEntry<bool> StutterFixConfig;
         internal static ConfigEntry<bool> FixMenuZoomConfig;
 
@@ -40,11 +40,18 @@ namespace BelmontsCurseMasterOptimizer
                 new ConfigDescription("Graphics quality preset: 0 = Low, 1 = Medium, 2 = High", new AcceptableValueRange<int>(0, 2))
             );
 
+            OptimizerMenuPageConfig = Config.Bind<int>(
+                "Display",
+                "OptimizerMenuPage",
+                0,
+                new ConfigDescription("Video settings page shown: 0 = Standard Video, 1 = Optimizer Graphics, 2 = Optimizer Performance", new AcceptableValueRange<int>(0, 2))
+            );
+
             ParticleDensityConfig = Config.Bind<int>(
                 "Graphics",
                 "ParticleDensityLimit",
                 0,
-                new ConfigDescription("Particle density: 0 = 100% (game default, untouched), 1 = 60%, 2 = 30%", new AcceptableValueRange<int>(0, 2))
+                new ConfigDescription("Particle density: 0 = 100% (game default, untouched), 1 = 80%, 2 = 60%", new AcceptableValueRange<int>(0, 2))
             );
 
             ReflectionModeConfig = Config.Bind<int>(
@@ -75,13 +82,6 @@ namespace BelmontsCurseMasterOptimizer
                 "Dynamically scales shadow distance and light culling during wide camera zoom-outs to prevent massive FPS drops."
             );
 
-            CpuCullingConfig = Config.Bind<bool>(
-                "Performance",
-                "CpuCulling",
-                true,
-                "Culls bone transforms and animations for off-screen enemies to save CPU time."
-            );
-
             StutterFixConfig = Config.Bind<bool>(
                 "Performance",
                 "StutterFix",
@@ -101,7 +101,6 @@ namespace BelmontsCurseMasterOptimizer
             MapPatches.FastMapEnabled = FastMapConfig.Value;
             MapPatches.MapRefreshMode = MapRefreshConfig.Value;
             CameraZoomPatches.ZoomOptimizerEnabled = ZoomOptimizerConfig.Value;
-            CullingAndCPUPatches.CpuCullingEnabled = CpuCullingConfig.Value;
             StutterAndGCPatches.StutterFixEnabled = StutterFixConfig.Value;
 
             // 1. Register custom MonoBehaviours into IL2CPP runtime

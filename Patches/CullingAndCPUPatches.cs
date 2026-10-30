@@ -10,7 +10,6 @@ namespace BelmontsCurseMasterOptimizer.Patches
     [HarmonyPatch]
     public static class CullingAndCPUPatches
     {
-        public static bool CpuCullingEnabled = true;
 
         [HarmonyPatch(typeof(RoomManagerSystem), "OnEnterRoom")]
         [HarmonyPostfix]

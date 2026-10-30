@@ -35,13 +35,13 @@ namespace BelmontsCurseMasterOptimizer.Patches
         private static readonly Queue<ParticleSystem> Pending = new Queue<ParticleSystem>();
         private static int _scanAtFrame = -1;
 
-        // 0 = 100% (game default), 1 = 60%, 2 = 30%
+        // 0 = 100% (game default), 1 = 80%, 2 = 60%
         public static float Factor
         {
             get
             {
                 int setting = Plugin.ParticleDensityConfig != null ? Plugin.ParticleDensityConfig.Value : 0;
-                return setting == 1 ? 0.60f : setting == 2 ? 0.30f : 1.00f;
+                return setting == 1 ? 0.80f : setting == 2 ? 0.60f : 1.00f;
             }
         }
 
