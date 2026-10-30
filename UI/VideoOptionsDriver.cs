@@ -27,6 +27,9 @@ namespace BelmontsCurseMasterOptimizer.UI
             // 2. Map Screen Black-Screen & Freeze Watchdog
             MapPatches.FailsafeCameraWatchdog();
 
+            // 3D resolution: must be set before the frame renders
+            RenderScaleDecoupler.Tick();
+
             // 3. Poll asynchronous string table loading after language changes
             VideoOptions.PollPendingLocaleStrings(Time.unscaledDeltaTime);
 
