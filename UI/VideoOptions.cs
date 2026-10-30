@@ -135,16 +135,17 @@ namespace BelmontsCurseMasterOptimizer.UI
                 Path = "video/maprefresh",
                 Key = "DeckFix_MapRefresh",
                 Title = "Map Refresh Rate",
-                Choices = new (string, string, int)[3]
+                Choices = new (string, string, int)[4]
                 {
                     ("DeckFix_MapRefresh_Full", "Every frame", 0),
                     ("DeckFix_MapRefresh_Half", "Half rate", 1),
-                    ("DeckFix_MapRefresh_Smart", "Smart", 2)
+                    ("DeckFix_MapRefresh_Smart", "Smart", 2),
+                    ("DeckFix_MapRefresh_Eco", "Eco", 3)
                 },
-                Default = () => Plugin.MapRefreshConfig != null ? Math.Clamp(Plugin.MapRefreshConfig.Value, 0, 2) : 0,
+                Default = () => Plugin.MapRefreshConfig != null ? Math.Clamp(Plugin.MapRefreshConfig.Value, 0, 3) : 0,
                 Apply = (int v) =>
                 {
-                    MapPatches.MapRefreshMode = Math.Clamp(v, 0, 2);
+                    MapPatches.MapRefreshMode = Math.Clamp(v, 0, 3);
                     if (Plugin.MapRefreshConfig != null) Plugin.MapRefreshConfig.Value = MapPatches.MapRefreshMode;
                     Plugin.Instance?.Config.Save();
                 }

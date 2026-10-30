@@ -21,9 +21,12 @@ namespace BelmontsCurseMasterOptimizer.Patches
         // Map refresh: the level map is drawn by its own camera into a 1920x1080 texture every frame, although
         // it only changes when the cursor, camera or zoom moves. While the camera is paused the texture keeps
         // showing the last drawn map.
-        // 0 = every frame (game default), 1 = half rate, 2 = smart (on movement, otherwise every 4th frame)
+        // 0 = every frame (game default), 1 = half rate, 2 = smart (on movement, otherwise every 4th frame),
+        // 3 = eco (every 4th frame while moving, every 8th frame at rest)
         public static int MapRefreshMode = 0;
         private const int SmartIdleInterval = 4;
+        private const int EcoMovingInterval = 4;
+        private const int EcoIdleInterval = 8;
         private static Camera _mapCamPausedByUs;
         private static Vector3 _lastCamPos;
         private static float _lastCamSize;
@@ -75,7 +78,10 @@ namespace BelmontsCurseMasterOptimizer.Patches
                     _lastCamPos = camPos;
                     _lastCamSize = camSize;
                     _lastCursorPos = cursorPos;
-                    render = moved || Time.frameCount - _lastMapRender >= SmartIdleInterval;
+                    int sinceLast = Time.frameCount - _lastMapRender;
+                    render = MapRefreshMode == 3
+                        ? sinceLast >= (moved ? EcoMovingInterval : EcoIdleInterval)
+                        : moved || sinceLast >= SmartIdleInterval;
                 }
 
                 if (render)

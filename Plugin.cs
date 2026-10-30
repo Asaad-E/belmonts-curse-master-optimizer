@@ -65,7 +65,7 @@ namespace BelmontsCurseMasterOptimizer
                 "Performance",
                 "MapRefresh",
                 0,
-                new ConfigDescription("How often the level map is redrawn while open: 0 = every frame (game default), 1 = half rate, 2 = smart (when the cursor, camera or zoom moves, otherwise every 4th frame)", new AcceptableValueRange<int>(0, 2))
+                new ConfigDescription("How often the level map is redrawn while open: 0 = every frame (game default), 1 = half rate, 2 = smart (when the cursor, camera or zoom moves, otherwise every 4th frame), 3 = eco (every 4th frame while moving, every 8th at rest)", new AcceptableValueRange<int>(0, 3))
             );
 
             FastMapConfig = Config.Bind<bool>(
