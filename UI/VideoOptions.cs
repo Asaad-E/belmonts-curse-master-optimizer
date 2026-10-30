@@ -93,19 +93,20 @@ namespace BelmontsCurseMasterOptimizer.UI
             },
             new VideoOption
             {
-                Path = "video/halfratemap",
-                Key = "DeckFix_HalfRateMap",
+                Path = "video/maprefresh",
+                Key = "DeckFix_MapRefresh",
                 Title = "Map Refresh Rate",
-                Choices = new (string, string, int)[2]
+                Choices = new (string, string, int)[3]
                 {
-                    ("DeckFix_HalfRateMap_Off", "Every frame", 0),
-                    ("DeckFix_HalfRateMap_On", "Half rate", 1)
+                    ("DeckFix_MapRefresh_Full", "Every frame", 0),
+                    ("DeckFix_MapRefresh_Half", "Half rate", 1),
+                    ("DeckFix_MapRefresh_Smart", "Smart", 2)
                 },
-                Default = () => Plugin.HalfRateMapConfig.Value ? 1 : 0,
+                Default = () => Plugin.MapRefreshConfig != null ? Math.Clamp(Plugin.MapRefreshConfig.Value, 0, 2) : 0,
                 Apply = (int v) =>
                 {
-                    MapPatches.HalfRateMap = (v == 1);
-                    if (Plugin.HalfRateMapConfig != null) Plugin.HalfRateMapConfig.Value = MapPatches.HalfRateMap;
+                    MapPatches.MapRefreshMode = Math.Clamp(v, 0, 2);
+                    if (Plugin.MapRefreshConfig != null) Plugin.MapRefreshConfig.Value = MapPatches.MapRefreshMode;
                     Plugin.Instance?.Config.Save();
                 }
             },

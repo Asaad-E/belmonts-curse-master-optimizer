@@ -155,7 +155,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 var sb = new StringBuilder();
                 sb.Append($"[MapPerf] {_what}: {_frames} frames, avg {(_frames > 0 ? _total / _frames : 0f):0.0} ms, worst {_worst:0.0} ms at +{_worstAt}f, >33ms: {_over33}, >50ms: {_over50}");
                 sb.Append(_timed > 0 ? $", engine cpu avg {_cpuTotal / _timed:0.0} ms, gpu avg {_gpuTotal / _timed:0.0} ms" : ", gpu timing unavailable");
-                sb.Append($", halfRateMap={MapPatches.HalfRateMap}");
+                sb.Append($", mapRefresh={MapPatches.MapRefreshMode}");
                 if (Notes.Count > 0)
                 {
                     sb.Append(" | ").Append(string.Join(" | ", Notes));

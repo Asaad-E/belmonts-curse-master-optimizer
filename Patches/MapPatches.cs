@@ -18,39 +18,73 @@ namespace BelmontsCurseMasterOptimizer.Patches
         private static UIMapManager _activeMapManager = null;
         private static UIMapLevelManager _activeLevelManager = null;
 
-        // Map refresh rate: the level map is drawn by its own camera into a 1920x1080 texture every frame,
-        // although it only changes when the cursor or zoom moves. Half rate skips every other map render.
-        public static bool HalfRateMap = false;
+        // Map refresh: the level map is drawn by its own camera into a 1920x1080 texture every frame, although
+        // it only changes when the cursor, camera or zoom moves. While the camera is paused the texture keeps
+        // showing the last drawn map.
+        // 0 = every frame (game default), 1 = half rate, 2 = smart (on movement, otherwise every 4th frame)
+        public static int MapRefreshMode = 0;
+        private const int SmartIdleInterval = 4;
         private static Camera _mapCamPausedByUs;
+        private static Vector3 _lastCamPos;
+        private static float _lastCamSize;
+        private static Vector3 _lastCursorPos;
+        private static int _lastMapRender;
 
         /// <summary>Called every frame from VideoOptionsDriver.Update.</summary>
         public static void MapRefreshTick()
         {
             try
             {
+                // Hand back the camera we paused last frame; it is re-paused below only if nothing changed.
                 if (_mapCamPausedByUs != null)
                 {
-                    // Always hand the camera back on the next frame (and whenever the map closes).
                     if ((UnityEngine.Object)(object)_mapCamPausedByUs != (UnityEngine.Object)null)
                     {
                         _mapCamPausedByUs.enabled = true;
                     }
                     _mapCamPausedByUs = null;
-                    return;
+                    if (MapRefreshMode == 1)
+                    {
+                        _lastMapRender = Time.frameCount;
+                        return;
+                    }
                 }
-                if (!HalfRateMap || !IsMapOpen || (Time.frameCount & 1) == 0)
+                if (MapRefreshMode == 0 || !IsMapOpen)
                 {
                     return;
                 }
                 LevelMap map = (UnityEngine.Object)(object)_activeLevelManager != (UnityEngine.Object)null ? _activeLevelManager._currentMapObject : null;
-                if ((UnityEngine.Object)(object)map == (UnityEngine.Object)null || (UnityEngine.Object)(object)map.mapCamera == (UnityEngine.Object)null)
+                LevelMapCamera mapCam = (UnityEngine.Object)(object)map != (UnityEngine.Object)null ? map.mapCamera : null;
+                Camera cam = (UnityEngine.Object)(object)mapCam != (UnityEngine.Object)null ? mapCam.mapCamera : null;
+                if ((UnityEngine.Object)(object)cam == (UnityEngine.Object)null || !cam.enabled)
                 {
-                    return;
+                    return; // only pause a camera the game left enabled
                 }
-                Camera cam = map.mapCamera.mapCamera;
-                if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null && cam.enabled)
+
+                bool render;
+                if (MapRefreshMode == 1)
                 {
-                    cam.enabled = false; // only cameras the game left enabled; re-enabled next frame
+                    render = false; // every other frame: rendered last frame, skip this one
+                }
+                else
+                {
+                    Vector3 camPos = cam.transform.position;
+                    float camSize = cam.orthographic ? cam.orthographicSize : cam.fieldOfView;
+                    Vector3 cursorPos = (UnityEngine.Object)(object)mapCam.cursor != (UnityEngine.Object)null ? ((Component)mapCam.cursor).transform.position : Vector3.zero;
+                    bool moved = camPos != _lastCamPos || camSize != _lastCamSize || cursorPos != _lastCursorPos;
+                    _lastCamPos = camPos;
+                    _lastCamSize = camSize;
+                    _lastCursorPos = cursorPos;
+                    render = moved || Time.frameCount - _lastMapRender >= SmartIdleInterval;
+                }
+
+                if (render)
+                {
+                    _lastMapRender = Time.frameCount;
+                }
+                else
+                {
+                    cam.enabled = false; // re-enabled at the start of the next frame
                     _mapCamPausedByUs = cam;
                 }
             }
@@ -59,7 +93,6 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 _mapCamPausedByUs = null;
             }
         }
-        private static GameMenuManager _activeGameMenuManager = null;
 
         public static bool IsGameMenuOpen
         {
