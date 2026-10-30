@@ -19,9 +19,6 @@ namespace BelmontsCurseMasterOptimizer
         internal static ManualLogSource L;
 
         internal static ConfigEntry<int> QualityPresetConfig;
-        internal static ConfigEntry<int> RenderScale3DConfig;
-        internal static ConfigEntry<int> UpscalerConfig;
-        internal static ConfigEntry<float> FsrSharpnessConfig;
         internal static ConfigEntry<int> ReflectionModeConfig;
         internal static ConfigEntry<bool> FastMapConfig;
         internal static ConfigEntry<bool> ZoomOptimizerConfig;
@@ -39,27 +36,6 @@ namespace BelmontsCurseMasterOptimizer
                 "QualityPreset",
                 2,
                 new ConfigDescription("Graphics quality preset: 0 = Low, 1 = Medium, 2 = High", new AcceptableValueRange<int>(0, 2))
-            );
-
-            RenderScale3DConfig = Config.Bind<int>(
-                "Graphics",
-                "RenderScale3D",
-                100,
-                new ConfigDescription("3D resolution in percent. Only the gameplay camera is scaled; HUD and menus stay native.", new AcceptableValueList<int>(RenderScaleDecoupler.Percents))
-            );
-
-            UpscalerConfig = Config.Bind<int>(
-                "Graphics",
-                "Upscaler",
-                1,
-                new ConfigDescription("Upscaler used below 100%: 0 = game default, 1 = AMD FSR 1.0, 2 = bilinear", new AcceptableValueRange<int>(0, 2))
-            );
-
-            FsrSharpnessConfig = Config.Bind<float>(
-                "Graphics",
-                "FsrSharpness",
-                0.8f,
-                new ConfigDescription("FSR RCAS sharpness (0 = soft, 1 = sharpest)", new AcceptableValueRange<float>(0f, 1f))
             );
 
             ReflectionModeConfig = Config.Bind<int>(
@@ -144,17 +120,6 @@ namespace BelmontsCurseMasterOptimizer
             SafePatch(typeof(StutterAndGCPatches), "StutterAndGCPatches");
             SafePatch(typeof(CullingAndCPUPatches), "CullingAndCPUPatches");
             SafePatch(typeof(VideoOptionPatches), "VideoOptionPatches");
-            SafePatch(typeof(RenderScaleDecoupler), "RenderScaleDecoupler");
-
-            try
-            {
-                RenderScaleDecoupler.Init();
-                RenderScaleDecoupler.SetUserPercent(RenderScale3DConfig.Value);
-            }
-            catch (Exception ex)
-            {
-                L.LogError($"[RenderScale] Init failed: {ex}");
-            }
 
             Config.Save();
             L.LogInfo("Belmont's Curse Master Optimizer v1.3.0 successfully loaded!");

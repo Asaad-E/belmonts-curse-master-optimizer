@@ -48,25 +48,9 @@ namespace BelmontsCurseMasterOptimizer.UI
                         Application.targetFrameRate = targetFrameRate;
                         CullingAndCPUPatches.EnsureSRPBatcher();
                         ReapplyFrames = 3;
-                        RenderScaleDecoupler.MarkAssetDirty();
                     }
                     if (Plugin.QualityPresetConfig != null) Plugin.QualityPresetConfig.Value = v;
                     Plugin.Instance?.Config.Save();
-                }
-            },
-            new VideoOption
-            {
-                Path = "video/renderscale3d",
-                Key = "DeckFix_RenderScale3D",
-                Title = "3D Resolution (UI stays native)",
-                Choices = RenderScaleDecoupler.Percents.Select((p, i) => ($"DeckFix_RenderScale3D_{p}", p == 100 ? "100% (Native)" : $"{p}%", i)).ToArray(),
-                Default = () => RenderScaleDecoupler.PercentToIndex(Plugin.RenderScale3DConfig != null ? Plugin.RenderScale3DConfig.Value : 100),
-                Apply = (int v) =>
-                {
-                    int percent = RenderScaleDecoupler.Percents[Math.Clamp(v, 0, RenderScaleDecoupler.Percents.Length - 1)];
-                    if (Plugin.RenderScale3DConfig != null) Plugin.RenderScale3DConfig.Value = percent;
-                    Plugin.Instance?.Config.Save();
-                    RenderScaleDecoupler.SetUserPercent(percent);
                 }
             },
             new VideoOption
