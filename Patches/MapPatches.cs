@@ -262,6 +262,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
         [HarmonyPostfix]
         public static void AfterRoomEnter()
         {
+            MapPerf.Begin("room entered (gameplay baseline)");
             RestoreWorldCamera();
         }
 

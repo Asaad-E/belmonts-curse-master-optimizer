@@ -1,6 +1,9 @@
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace BelmontsCurseMasterOptimizer.Patches
 {
@@ -24,6 +27,55 @@ namespace BelmontsCurseMasterOptimizer.Patches
         private static int _frames;
         private static readonly List<string> Notes = new List<string>();
 
+        // CPU time each camera spends in URP during the window (render submission, not GPU time).
+        private class CamStat
+        {
+            public string Name;
+            public string Target;
+            public int Count;
+            public double TotalMs;
+        }
+        private static readonly Dictionary<IntPtr, CamStat> Cams = new Dictionary<IntPtr, CamStat>();
+        private static readonly Stopwatch CamWatch = new Stopwatch();
+        private static IntPtr _camInProgress;
+        private static Il2CppSystem.Action<ScriptableRenderContext, Camera> _beginDelegate;
+        private static Il2CppSystem.Action<ScriptableRenderContext, Camera> _endDelegate;
+
+        public static void Init()
+        {
+            _beginDelegate = (Il2CppSystem.Action<ScriptableRenderContext, Camera>)new Action<ScriptableRenderContext, Camera>(OnBeginCamera);
+            _endDelegate = (Il2CppSystem.Action<ScriptableRenderContext, Camera>)new Action<ScriptableRenderContext, Camera>(OnEndCamera);
+            RenderPipelineManager.add_beginCameraRendering(_beginDelegate);
+            RenderPipelineManager.add_endCameraRendering(_endDelegate);
+        }
+
+        private static void OnBeginCamera(ScriptableRenderContext context, Camera camera)
+        {
+            if (!Active)
+            {
+                return;
+            }
+            _camInProgress = camera.Pointer;
+            CamWatch.Restart();
+        }
+
+        private static void OnEndCamera(ScriptableRenderContext context, Camera camera)
+        {
+            if (!Active || camera.Pointer != _camInProgress)
+            {
+                return;
+            }
+            double ms = CamWatch.Elapsed.TotalMilliseconds;
+            if (!Cams.TryGetValue(_camInProgress, out CamStat stat))
+            {
+                RenderTexture rt = camera.targetTexture;
+                stat = new CamStat { Name = camera.name, Target = rt != null ? $"{rt.width}x{rt.height}" : "screen" };
+                Cams[_camInProgress] = stat;
+            }
+            stat.Count++;
+            stat.TotalMs += ms;
+        }
+
         private static bool Active => _endFrame >= 0;
 
         public static void Begin(string what)
@@ -45,6 +97,7 @@ namespace BelmontsCurseMasterOptimizer.Patches
             _total = 0f;
             _frames = 0;
             Notes.Clear();
+            Cams.Clear();
         }
 
         public static void Note(string what)
@@ -86,6 +139,10 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 if (Notes.Count > 0)
                 {
                     sb.Append(" | ").Append(string.Join(" | ", Notes));
+                }
+                foreach (CamStat c in Cams.Values)
+                {
+                    sb.Append($" | cam '{c.Name}' ({c.Target}) rendered {c.Count}x, cpu avg {c.TotalMs / Math.Max(1, c.Count):0.00} ms");
                 }
                 Plugin.L?.LogInfo(sb.ToString());
                 _endFrame = -1;

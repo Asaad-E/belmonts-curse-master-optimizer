@@ -121,6 +121,15 @@ namespace BelmontsCurseMasterOptimizer
             SafePatch(typeof(CullingAndCPUPatches), "CullingAndCPUPatches");
             SafePatch(typeof(VideoOptionPatches), "VideoOptionPatches");
 
+            try
+            {
+                MapPerf.Init();
+            }
+            catch (Exception ex)
+            {
+                L.LogWarning("[MapPerf] Init failed: " + ex.Message);
+            }
+
             Config.Save();
             L.LogInfo("Belmont's Curse Master Optimizer v1.3.0 successfully loaded!");
         }
