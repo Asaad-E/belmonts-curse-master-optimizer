@@ -116,31 +116,49 @@ namespace BelmontsCurseMasterOptimizer.UI
         [HarmonyPostfix]
         private static void AfterApplyFramerate(VideoSettings __instance)
         {
+            EnforceDeckFrameLimit(__instance, "ApplyFramerateSettings");
+        }
+
+        // The game also applies vsync on its own; without this a later vsync pass could undo the 40/45 FPS setup.
+        [HarmonyPatch(typeof(VideoSettings), "ApplyVSyncState")]
+        [HarmonyPostfix]
+        private static void AfterApplyVSyncState(VideoSettings __instance)
+        {
+            EnforceDeckFrameLimit(__instance, "ApplyVSyncState");
+        }
+
+        private static void EnforceDeckFrameLimit(VideoSettings settings, string caller)
+        {
             try
             {
-                if ((UnityEngine.Object)(object)__instance != (UnityEngine.Object)null && __instance._maxFPS != null)
+                if ((UnityEngine.Object)(object)settings == (UnityEngine.Object)null || settings._maxFPS == null)
                 {
-                    int currentVal = __instance._maxFPS.value;
-                    var opts = __instance._maxFPS._options;
-                    if (opts != null && currentVal >= 0 && currentVal < opts.Length)
-                    {
-                        var opt = ((Il2CppArrayBase<EnumSetting.EnumSettingOption>)(object)opts)[currentVal];
-                        if (opt != null)
-                        {
-                            float fpsData = opt.data;
-                            if (Mathf.Approximately(fpsData, 40f) || Mathf.Approximately(fpsData, 45f))
-                            {
-                                Application.targetFrameRate = (int)fpsData;
-                                QualitySettings.vSyncCount = 0; // Disable Unity vsync so Gamescope handles 40/45 Hz frame pacing cleanly
-                                Plugin.L.LogInfo($"[FPS] Applied {fpsData} FPS lock with vSyncCount = 0 for Steam Deck pacing.");
-                            }
-                        }
-                    }
+                    return;
+                }
+                int currentVal = settings._maxFPS.value;
+                var opts = settings._maxFPS._options;
+                if (opts == null || currentVal < 0 || currentVal >= opts.Length)
+                {
+                    return;
+                }
+                var opt = ((Il2CppArrayBase<EnumSetting.EnumSettingOption>)(object)opts)[currentVal];
+                if (opt == null)
+                {
+                    return;
+                }
+                float fpsData = opt.data;
+                if (Mathf.Approximately(fpsData, 40f) || Mathf.Approximately(fpsData, 45f))
+                {
+                    int before = QualitySettings.vSyncCount;
+                    int beforeFps = Application.targetFrameRate;
+                    Application.targetFrameRate = (int)fpsData;
+                    QualitySettings.vSyncCount = 0; // Disable Unity vsync so Gamescope handles 40/45 Hz frame pacing cleanly
+                    Plugin.L.LogInfo($"[FPS] {caller}: applied {fpsData} FPS lock with vSyncCount = 0 (was target {beforeFps}, vSync {before}).");
                 }
             }
             catch (Exception ex)
             {
-                Plugin.L.LogWarning("[FPS] AfterApplyFramerate: " + ex.Message);
+                Plugin.L.LogWarning($"[FPS] {caller}: " + ex.Message);
             }
         }
     }

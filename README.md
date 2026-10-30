@@ -62,7 +62,7 @@ Once installed, open **Settings > Video** to configure:
 | Page | Setting | Options | Description |
 | :--- | :--- | :--- | :--- |
 | Top | **Settings Page** | Standard Video / Optimizer: Graphics / Optimizer: Performance | Chooses which group of options is shown. |
-| Standard Video | **Max FPS** | 30 / 40 / 45 / 60 / 120 / Unlimited | Game framerate limit, with added 40 FPS and 45 FPS modes for Steam Deck. |
+| Standard Video | **Max FPS** | 30 / 40 / 45 / 60 / 120 / Unlimited | Game framerate limit, with added 40 FPS and 45 FPS modes for Steam Deck. At 40/45 FPS the mod turns Unity vsync off so the Deck paces frames itself; with vsync on a 60 Hz screen, any slow frame drops straight to 30 FPS. |
 | Graphics | **Graphics Quality** | Low / Medium / High | Overall graphics quality and asset fidelity. |
 | Graphics | **Particle Density** | 100% / 80% / 60% | Optional particle limit; 100% leaves particles untouched. |
 | Graphics | **Water Reflections** | Optimized (60 FPS) / Frame-Skip / Off | Smooth reflections, legacy frame-skip, or off for battery savings. |
