@@ -21,6 +21,7 @@ namespace BelmontsCurseMasterOptimizer
         internal static ConfigEntry<int> QualityPresetConfig;
         internal static ConfigEntry<int> ReflectionModeConfig;
         internal static ConfigEntry<bool> FastMapConfig;
+        internal static ConfigEntry<bool> HalfRateMapConfig;
         internal static ConfigEntry<bool> ZoomOptimizerConfig;
         internal static ConfigEntry<bool> CpuCullingConfig;
         internal static ConfigEntry<bool> StutterFixConfig;
@@ -43,6 +44,13 @@ namespace BelmontsCurseMasterOptimizer
                 "ReflectionMode",
                 0,
                 new ConfigDescription("Water reflection mode: 0 = Optimized (Smooth 60 FPS), 1 = Frame-Skip (30 FPS), 2 = Off", new AcceptableValueRange<int>(0, 2))
+            );
+
+            HalfRateMapConfig = Config.Bind<bool>(
+                "Performance",
+                "HalfRateMap",
+                false,
+                "Redraws the level map every other frame while the map screen is open."
             );
 
             FastMapConfig = Config.Bind<bool>(
@@ -83,6 +91,7 @@ namespace BelmontsCurseMasterOptimizer
             // Synchronize patch flags with configuration
             WaterReflectionPatches.ReflectionMode = ReflectionModeConfig.Value;
             MapPatches.FastMapEnabled = FastMapConfig.Value;
+            MapPatches.HalfRateMap = HalfRateMapConfig.Value;
             CameraZoomPatches.ZoomOptimizerEnabled = ZoomOptimizerConfig.Value;
             CullingAndCPUPatches.CpuCullingEnabled = CpuCullingConfig.Value;
             StutterAndGCPatches.StutterFixEnabled = StutterFixConfig.Value;

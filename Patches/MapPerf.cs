@@ -26,6 +26,10 @@ namespace BelmontsCurseMasterOptimizer.Patches
         private static float _total;
         private static int _frames;
         private static readonly List<string> Notes = new List<string>();
+        private static double _cpuTotal;
+        private static double _gpuTotal;
+        private static int _timed;
+        private static readonly Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<FrameTiming> Timings = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<FrameTiming>(1);
 
         // CPU time each camera spends in URP during the window (render submission, not GPU time).
         private class CamStat
@@ -98,6 +102,9 @@ namespace BelmontsCurseMasterOptimizer.Patches
             _frames = 0;
             Notes.Clear();
             Cams.Clear();
+            _cpuTotal = 0;
+            _gpuTotal = 0;
+            _timed = 0;
         }
 
         public static void Note(string what)
@@ -117,6 +124,17 @@ namespace BelmontsCurseMasterOptimizer.Patches
                 return;
             }
             float ms = Time.unscaledDeltaTime * 1000f;
+            try
+            {
+                FrameTimingManager.CaptureFrameTimings();
+                if (FrameTimingManager.GetLatestTimings(1, Timings) > 0 && Timings[0].gpuFrameTime > 0)
+                {
+                    _cpuTotal += Timings[0].cpuFrameTime;
+                    _gpuTotal += Timings[0].gpuFrameTime;
+                    _timed++;
+                }
+            }
+            catch {}
             _frames++;
             _total += ms;
             if (ms > _worst)
@@ -136,6 +154,8 @@ namespace BelmontsCurseMasterOptimizer.Patches
             {
                 var sb = new StringBuilder();
                 sb.Append($"[MapPerf] {_what}: {_frames} frames, avg {(_frames > 0 ? _total / _frames : 0f):0.0} ms, worst {_worst:0.0} ms at +{_worstAt}f, >33ms: {_over33}, >50ms: {_over50}");
+                sb.Append(_timed > 0 ? $", engine cpu avg {_cpuTotal / _timed:0.0} ms, gpu avg {_gpuTotal / _timed:0.0} ms" : ", gpu timing unavailable");
+                sb.Append($", halfRateMap={MapPatches.HalfRateMap}");
                 if (Notes.Count > 0)
                 {
                     sb.Append(" | ").Append(string.Join(" | ", Notes));

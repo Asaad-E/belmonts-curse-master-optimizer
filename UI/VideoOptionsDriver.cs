@@ -27,6 +27,7 @@ namespace BelmontsCurseMasterOptimizer.UI
             // 2. Map Screen Black-Screen & Freeze Watchdog
             MapPatches.FailsafeCameraWatchdog();
             MapPerf.Tick();
+            MapPatches.MapRefreshTick();
 
             // 3. Poll asynchronous string table loading after language changes
             VideoOptions.PollPendingLocaleStrings(Time.unscaledDeltaTime);

@@ -17,6 +17,48 @@ namespace BelmontsCurseMasterOptimizer.Patches
 
         private static UIMapManager _activeMapManager = null;
         private static UIMapLevelManager _activeLevelManager = null;
+
+        // Map refresh rate: the level map is drawn by its own camera into a 1920x1080 texture every frame,
+        // although it only changes when the cursor or zoom moves. Half rate skips every other map render.
+        public static bool HalfRateMap = false;
+        private static Camera _mapCamPausedByUs;
+
+        /// <summary>Called every frame from VideoOptionsDriver.Update.</summary>
+        public static void MapRefreshTick()
+        {
+            try
+            {
+                if (_mapCamPausedByUs != null)
+                {
+                    // Always hand the camera back on the next frame (and whenever the map closes).
+                    if ((UnityEngine.Object)(object)_mapCamPausedByUs != (UnityEngine.Object)null)
+                    {
+                        _mapCamPausedByUs.enabled = true;
+                    }
+                    _mapCamPausedByUs = null;
+                    return;
+                }
+                if (!HalfRateMap || !IsMapOpen || (Time.frameCount & 1) == 0)
+                {
+                    return;
+                }
+                LevelMap map = (UnityEngine.Object)(object)_activeLevelManager != (UnityEngine.Object)null ? _activeLevelManager._currentMapObject : null;
+                if ((UnityEngine.Object)(object)map == (UnityEngine.Object)null || (UnityEngine.Object)(object)map.mapCamera == (UnityEngine.Object)null)
+                {
+                    return;
+                }
+                Camera cam = map.mapCamera.mapCamera;
+                if ((UnityEngine.Object)(object)cam != (UnityEngine.Object)null && cam.enabled)
+                {
+                    cam.enabled = false; // only cameras the game left enabled; re-enabled next frame
+                    _mapCamPausedByUs = cam;
+                }
+            }
+            catch
+            {
+                _mapCamPausedByUs = null;
+            }
+        }
         private static GameMenuManager _activeGameMenuManager = null;
 
         public static bool IsGameMenuOpen
