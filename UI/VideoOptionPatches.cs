@@ -119,12 +119,12 @@ namespace BelmontsCurseMasterOptimizer.UI
             EnforceDeckFrameLimit(__instance, "ApplyFramerateSettings");
         }
 
-        // The game also applies vsync on its own; without this a later vsync pass could undo the 40/45 FPS setup.
-        [HarmonyPatch(typeof(VideoSettings), "ApplyVSyncState")]
+        // Toggling vsync in the menu goes through OnVSyncChanged; without this it would undo the 40/45 FPS setup.
+        [HarmonyPatch(typeof(VideoSettings), "OnVSyncChanged")]
         [HarmonyPostfix]
-        private static void AfterApplyVSyncState(VideoSettings __instance)
+        private static void AfterVSyncChanged(VideoSettings __instance)
         {
-            EnforceDeckFrameLimit(__instance, "ApplyVSyncState");
+            EnforceDeckFrameLimit(__instance, "OnVSyncChanged");
         }
 
         private static void EnforceDeckFrameLimit(VideoSettings settings, string caller)
